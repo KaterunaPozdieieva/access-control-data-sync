@@ -1,0 +1,661 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paxton Benutzer</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'Formular/paxton_formular.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+    {% for ab in benutzerabbrechen %}
+        <button class="benutzerabbrechen" onclick="window.location.href='{% url ab.url_name %}'">
+            {{ ab.title }}
+        </button>
+    {% endfor %}
+    
+    <div class="container">
+        <h1>Paxton Benutzer</h1>
+        <form action="/" method="POST" id="paxtonForm">
+            
+            <input type="hidden" id="mifareid_paxton" name="mifareid_paxton">
+            <div class="form-group">
+                <label for="quelle">Benutzertup:</label>
+                <input type="text" id="quelle" name="quelle" readonly >
+            </div>
+            <div class="form-group">
+                <label for="employeeNumber">Personalnummer:</label>
+                <input type="text" id="employeeNumber" name="employeeNumber" placeholder="Personalnummer eingeben..." required >
+                <ul id="employeeNumberResults" class="dropdown"></ul>
+            </div>
+            <div class="form-group">
+                <label for="cardnumber">Kartennummer:</label>
+                <input type="text" id="cardnumber" name="cardnumber" placeholder="Kartennummer eingeben..." required >
+                <ul id="KartennummerResults" class="dropdown"></ul>
+            </div>
+            <div class="form-group">
+                <label for="nameSearch">Vorname oder Nachname:</label>
+                <input type="text" id="nameSearch" name="nameSearch" placeholder="Name eingeben...">
+                <ul id="autocompleteResults" class="dropdown"></ul>
+            </div>
+            <div class="form-group">
+                <label for="userStatus">Status:</label>
+                <input type="text" id="userStatus" name="userStatus" readonly>
+                
+            </div>
+            
+            <div class="form-group">
+                <label for="OElong">Einrichtung:</label>
+                <input type="text" id="OElong" name="OElong" value="{{ benutzer_info.Einrichtung|default:'' }}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="MSTBROE">Abteilung:</label>
+                <input type="text" id="MSTBROE" name="MSTBROE" value="{{ benutzer_info.MSTBROE|default:'' }}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="DVH_TEXT">Funktion:</label>
+                <input type="text" id="DVH_TEXT" name="DVH_TEXT" value="{{ benutzer_info.Funktion|default:'' }}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="createtime">Erstellzeit:</label>
+                <input type="datetime-local" id="createtime" name="createtime" value="{{ benutzer_info.Erstellzeit|default:'' }}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="Austritt">Vertragsende:</label>
+                <input type="date" id="Austritt" name="Austritt" value="{{ benutzer_info.Vertragsende|default:'' }}" readonly>
+            </div>
+
+            
+            <div class="form-group">
+                <label for="benutzergruppe">Benutzergruppe:</label>
+                <span class="edit-icon"  id="edit-icon-Benutzergruppe"  onclick="makeEditable('benutzergruppe')" title="Bearbeiten">✏️</span>
+                <input type="text" id="benutzergruppe" name="benutzergruppe" readonly>
+                <ul id="benutzergruppeList" class="Icondropdown"></ul>
+            </div>
+            
+            <div class="form-group">
+                <label for="berechtigungsgruppe">Berechtigungsgruppe:</label>
+                <span class="edit-icon"  id="edit-icon-Berechtigungsgruppe"   onclick="makeEditable('berechtigungsgruppe')" title="Bearbeiten">✏️</span>
+                <input type="text" id="berechtigungsgruppe" name="berechtigungsgruppe" readonly >
+                <ul id="berechtigungsgruppeList" class="Icondropdown"></ul>
+                
+            </div>
+            
+            
+            
+            <div class="form-group">
+                <label for="individualPermissions">Individuelle Berechtigung:</label>
+                <div class="textarea-and-list">
+                    <textarea id="individualPermissions" name="individualPermissions" readonly></textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="button cancel-button" onclick="resetForm()">Ablehnen</button>
+                <button type="button" class="button save-button" onclick="handleSave(event)">Speichern</button>
+
+            </div>
+            <div class="toggle-container">
+                <span class="word-button" id="toggleButton">Mehr ↓</span>
+            </div>
+            <div class="extra-buttons" id="extraButtons" style="display: none;">
+                <button id="lost_Card">Karte wurde verloren</button>
+                <button id="DeaktivCard">Karte deaktivieren</button>
+
+                <button type="button" id="restoreCard" style="display: none;">Wiederherstellen</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="customConfirm" style="display: none;">
+        <div class="modal-content">
+            <p id="confirmMessage">Sind Sie sicher, dass Sie diese Aktion ausführen möchten?</p>
+            <div class="modal-actions">
+                <button id="confirmYes">Ja</button>
+                <button id="confirmNo">Nein</button>
+            </div>
+        </div>
+    </div>
+
+    
+
+      
+      
+    <script>
+
+
+     //die kartennummer aud die tabelle in formular schreiben
+    const params = new URLSearchParams(window.location.search);
+    const kartennummer = params.get('kartennummer');
+    if (kartennummer) {
+        document.getElementById('cardnumber').value = kartennummer;
+    }
+
+
+
+        //Ablehnen Button
+        function resetForm() {
+            location.reload(); 
+}
+    //Button "Mehr ↓"
+    document.getElementById("toggleButton").addEventListener("click", function() {
+                let extraButtons = document.getElementById("extraButtons");
+                let toggleButton = document.getElementById("toggleButton");
+        
+                if (extraButtons.style.display === "none" || extraButtons.style.display === "") {
+                    extraButtons.style.display = "block";
+                    toggleButton.textContent = "Verstecken  ↑";
+                } else {
+                    extraButtons.style.display = "none";
+                    toggleButton.textContent = "Mehr ↓";
+                }
+            });   
+    
+           
+            
+            let debounceTimeout;
+            document.addEventListener("DOMContentLoaded", function () {
+            const restoreCard = document.getElementById("restoreCard");
+            if (restoreCard) {
+                restoreCard.style.display = "none";
+            }
+
+            // Per Kartennummer suchen
+
+            document.getElementById("cardnumber").addEventListener("input", function () {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => {
+                        const kartennummer = this.value;
+                        if (!kartennummer) {
+                            document.getElementById("userStatus").value = "Keine Kartennummer eingegeben";
+                            document.getElementById("userStatus").className = "normal"; 
+                            document.getElementById("benutzergruppe").value = '';
+                            document.getElementById("berechtigungsgruppe").value = '';
+                            document.getElementById("individualPermissions").value = '';
+                            return;
+                        }
+                    }, 300); // Debounce: 300ms
+                });
+            
+        });
+        
+// Karte als verloren melden
+document.getElementById("lost_Card").addEventListener("click", function (event) {
+    event.preventDefault();
+    const kartennummer = document.getElementById('cardnumber').value.trim();
+    const mifareid_paxton = (document.getElementById('mifareid_paxton') || {}).value?.trim() || "";
+    const employeeNumber = (document.getElementById('employeeNumber') || {}).value?.trim() || "";
+    if (!kartennummer) {
+        alert("Bitte geben Sie eine Kartennummer ein.");
+        return;
+    }
+    showConfirmDialog("Sind Sie sicher, dass Sie diese Karte als verloren markieren möchten?")
+        .then(confirmation => {
+            if (!confirmation) {
+                alert("Vorgang wurde abgebrochen.");
+                return;
+            }
+            fetch('/lost_Card', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    kartennummer,
+                    mifareid_paxton,
+                    employeeNumber
+                })
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message || "Fehler: " + data.error));
+        });
+});
+
+// Karte als deaktiviert melden
+document.getElementById("DeaktivCard").addEventListener("click", function (event) {
+    event.preventDefault();
+    const kartennummer = document.getElementById('cardnumber').value.trim();
+    const mifareid_paxton = (document.getElementById('mifareid_paxton') || {}).value?.trim() || "";
+    const employeeNumber = (document.getElementById('employeeNumber') || {}).value?.trim() || "";
+    if (!kartennummer) {
+        alert("Bitte geben Sie eine Kartennummer ein.");
+        return;
+    }
+    showConfirmDialog("Sind Sie sicher, dass Sie diese Karte als deaktiviert markieren möchten?")
+        .then(confirmation => {
+            if (!confirmation) {
+                alert("Vorgang wurde abgebrochen.");
+                return;
+            }
+            fetch('/DeaktivCard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    kartennummer,
+                    mifareid_paxton,
+                    employeeNumber
+                })
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message || "Fehler: " + data.error));
+        });
+});
+
+// Karte wiederherstellen
+document.getElementById("restoreCard").addEventListener("click", function (event) {
+    event.preventDefault();
+    const kartennummer = document.getElementById('cardnumber').value.trim();
+    const mifareid_paxton = (document.getElementById('mifareid_paxton') || {}).value?.trim() || "";
+    const employeeNumber = (document.getElementById('employeeNumber') || {}).value?.trim() || "";
+    if (!kartennummer) {
+        alert("Bitte geben Sie eine Kartennummer ein.");
+        return;
+    }
+    showConfirmDialog("Möchten Sie diese Karte wirklich wiederherstellen?")
+        .then(confirmation => {
+            if (!confirmation) {
+                alert("Wiederherstellung abgebrochen.");
+                return;
+            }
+            fetch('/restoreCard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    kartennummer,
+                    mifareid_paxton,
+                    employeeNumber
+                })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Serverfehler");
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message || "Karte wurde erfolgreich wiederhergestellt.");
+                if (data.user_id) {
+                    window.location.href = `/user/${data.user_id}`;  
+                } else {
+                    window.location.reload();  
+                }
+            })
+            .catch(error => {
+                console.error("Fehler beim Wiederherstellen:", error);
+                alert("Fehler beim Wiederherstellen der Karte.");
+            });
+        });
+});
+
+
+            //// Fenster: Funktion zur Zustimmung
+
+            function showConfirmDialog(message) {
+                return new Promise((resolve) => {
+                    const dialog = document.getElementById("customConfirm");
+                    const confirmMessage = document.getElementById("confirmMessage");
+                    const confirmYes = document.getElementById("confirmYes");
+                    const confirmNo = document.getElementById("confirmNo");
+                    confirmMessage.textContent = message;
+
+                    dialog.style.display = 'flex';
+
+                    // Wenn der Benutzer auf "Ja" klickt
+                    confirmYes.onclick = function () {
+                        dialog.style.display = 'none'; 
+                        resolve(true); // "Ja" wird bestätigt
+                    };
+
+                    // Wenn der Benutzer auf "Nein" klickt
+                    confirmNo.onclick = function () {
+                        dialog.style.display = 'none'; 
+                        resolve(false); // "Nein" wird bestätigt
+                    };
+                });
+            }
+
+
+               
+
+            //änderungen speichen
+            async function handleSave(event) {
+                event.preventDefault();
+
+                const cardnumberField = document.getElementById('cardnumber');
+                if (!cardnumberField) {
+                    alert("Das Feld 'Kartennummer' fehlt im Formular.");
+                    return;
+                }
+
+                const cardnumber = cardnumberField.value.trim();
+                const benutzergruppeField = document.getElementById('benutzergruppe');
+                const berechtigungsgruppeField = document.getElementById('berechtigungsgruppe');
+
+                const benutzergruppe = benutzergruppeField ? benutzergruppeField.value.trim() : '';
+                const berechtigungsgruppe = berechtigungsgruppeField ? berechtigungsgruppeField.value.trim() : '';
+
+                if (!cardnumber) {
+                    alert("Bitte Kartennummer Feld ausfüllen!");
+                    return;
+                }
+
+                const confirmation = await showConfirmDialog("Möchten Sie die Daten wirklich speichern?");
+                    if (!confirmation) {
+                        return;
+                    }
+
+                try {
+                    const response = await fetch('/save-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            kartennummer: cardnumber,
+                            mifareid_paxton: mifareid_paxton,
+                            employeeNumber: employeeNumber,
+                            benutzergruppe: benutzergruppe,
+                            berechtigungsgruppe: berechtigungsgruppe
+                        }),
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert(`Erfolg: ${result.message}`);
+                    } else {
+                        const errorResult = await response.json();
+                        alert(`Fehler: ${errorResult.error}`);
+                    }
+                } catch (error) {
+                    alert("Es gab einen Fehler beim Speichern der Daten.");
+                    console.error("Fehler beim Speichern:", error);
+                }
+            }
+
+//Namen aus Paxton der Gruppen/türen ID abrufen
+
+        // Dropdown für Gruppen holen/anzeigen
+function makeEditable(fieldId) {
+    const fieldMapping = {
+        benutzergruppe: "departments",
+        berechtigungsgruppe: "access_levels"
+    };
+    const listType = fieldMapping[fieldId];
+    const field = document.getElementById(fieldId);
+    const Icondropdown = document.getElementById(`${fieldId}List`);
+    if (!listType || !field || !Icondropdown) return;
+
+    field.removeAttribute("readonly");
+    field.classList.add("editable");
+    field.focus();
+
+    // Autocomplete: bei Tipp & Fokus
+    field.addEventListener("focus", function() {
+        fetch(`/berechtigungen_verarbeitung?type=${listType}&search=${encodeURIComponent(field.value)}`)
+            .then(res => res.json())
+            .then(data => showDropdown(field, Icondropdown, data));
+    });
+    field.addEventListener("input", function() {
+        const term = field.value;
+        fetch(`/berechtigungen_verarbeitung?type=${listType}&search=${encodeURIComponent(term)}`)
+            .then(res => res.json())
+            .then(data => showDropdown(field, Icondropdown, data));
+    });
+
+    // Initial anzeigen
+    fetch(`/berechtigungen_verarbeitung?type=${listType}`)
+        .then(res => res.json())
+        .then(data => showDropdown(field, Icondropdown, data));
+
+    // Liste schließen bei Klick außerhalb
+    setTimeout(() => {
+        document.addEventListener("click", function dropdownCloseHandler(event) {
+            if (!Icondropdown.contains(event.target) && event.target !== field) {
+                Icondropdown.style.display = "none";
+                field.setAttribute("readonly", true);
+                field.classList.remove("editable");
+                document.removeEventListener("click", dropdownCloseHandler);
+            }
+        });
+    }, 0);
+
+    function showDropdown(field, dropdown, options) {
+        dropdown.innerHTML = "";
+        if (!options.length) {
+            dropdown.innerHTML = "<li>Keine Daten gefunden</li>";
+            dropdown.style.display = "block";
+            return;
+        }
+        options.forEach(opt => {
+            const li = document.createElement("li");
+            li.textContent = opt.name;
+            li.onclick = function(e) {
+                field.value = opt.name;
+                dropdown.innerHTML = "";
+                dropdown.style.display = "none";
+                field.setAttribute("readonly", true);
+                field.classList.remove("editable");
+            };
+            dropdown.appendChild(li);
+        });
+        dropdown.style.display = "block";
+    }
+}
+
+            function updateEditIconsVisibility(status) {
+                const icons = document.querySelectorAll(".edit-icon");
+                icons.forEach(icon => {
+                    icon.style.display = (status === "Aktiv") ? "inline" : "none";
+                });
+            }
+
+
+            // Kartenstatus prüfen und Buttons steuern
+            function checkCardStatus(kartennummer) {
+                    fetch("/check_status", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ kartennummer }),
+                    })
+                    .then((response) => {
+                        if (!response.ok) throw new Error("Fehlerhafte Antwort");
+                        return response.json();
+                    })
+                    .then((data) => {
+                        const status = data.Status || "Unbekannter Status";
+                        const statusColor = data.StatusColor || "";
+
+                        const statusField = document.getElementById("userStatus");
+                        statusField.value = status;
+                        statusField.className = statusColor;
+
+                        updateEditIconsVisibility(status);
+
+                        // "Wiederherstellen"-Button nur bei "Inaktiv" oder "Verlorene Karte"
+                        const restoreCard = document.getElementById("restoreCard");
+                        if (restoreCard) {
+                            if (status === "Verlorene Karte" || status === "Inaktiv") {
+                                restoreCard.style.display = "inline-block";
+                            } else {
+                                restoreCard.style.display = "none";
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        updateEditIconsVisibility("");
+                        // Im Fehlerfall Button verstecken
+                        const restoreCard = document.getElementById("restoreCard");
+                        if (restoreCard) restoreCard.style.display = "none";
+                    });
+                }
+
+                // Beim Laden: Status prüfen, falls Kartennummer vorhanden
+                const cardnumberField = document.getElementById("cardnumber");
+                if (cardnumberField && cardnumberField.value.trim() !== "") {
+                    checkCardStatus(cardnumberField.value.trim());
+                }
+
+                // Auch global verfügbar machen, z.B. bei Benutzerauswahl
+                window.checkCardStatus = checkCardStatus;
+            // });
+
+
+
+// 1. Suche per Kartennummer
+document.getElementById("cardnumber").addEventListener("input", function () {
+    const cardnumber = this.value.trim();
+    if (cardnumber) {
+        fetch(`/search_by_cardnumber?cardnumber=${encodeURIComponent(cardnumber)}`)
+            .then(response => response.json())
+            .then(data => showResultsList(data, "KartennummerResults"))
+            .catch(() => showResultsList([], "KartennummerResults"));
+    } else {
+        showResultsList([], "KartennummerResults");
+    }
+});
+
+// 2. Suche per Personalnummer
+document.getElementById("employeeNumber").addEventListener("input", function () {
+    const searchTerm = this.value.trim();
+    if (searchTerm) {
+        fetch(`/employee_number_autocomplete?term=${encodeURIComponent(searchTerm)}`)
+            .then(response => response.json())
+            .then(data => showResultsList(data, "employeeNumberResults"))
+            .catch(() => showResultsList([], "employeeNumberResults"));
+    } else {
+        showResultsList([], "employeeNumberResults");
+    }
+});
+
+// 3. Suche per Name (Vorname oder Nachname)
+document.getElementById("nameSearch").addEventListener("input", function () {
+    const searchTerm = this.value.trim();
+    if (searchTerm) {
+        fetch(`/name_autocomplete?term=${encodeURIComponent(searchTerm)}`)
+            .then(response => response.json())
+            .then(data => showResultsList(data, "autocompleteResults"))
+            .catch(() => showResultsList([], "autocompleteResults"));
+    } else {
+        showResultsList([], "autocompleteResults");
+    }
+});
+
+
+
+// Formular füllen (deine bestehende Logik)
+function fillUserFields(data) {
+    const mifareid_paxton = data.mifareidpaxton || data.mifareid_paxton || '';
+    const mifareidInput = document.getElementById("mifareid_paxton");
+    if (mifareidInput) mifareidInput.value = mifareid_paxton;
+
+    const quelleMap = {
+        "paxton_view_oberfläche": "Mitarbeiter",
+        "t_Gast": "Gäste",
+        "t_studenten": "Studenten"
+    };
+    const vorname = data.Vorname || data.vorname || '';
+    const nachname = data.Nachname || data.nachname || '';
+    const status = data.status || data.Status || '';
+    const statusColor = data.statusColor || data.StatusColor || '';
+    // document.getElementById("userStatus").value = status;
+    // document.getElementById("userStatus").className = statusColor || "normal";
+    const employeeNumber = data.employeeNumber || data.employeenumber || '';
+    const kartennummer = data.kartennummer || data.cardnumber || '';
+
+    document.getElementById("employeeNumber").value = employeeNumber;
+    document.getElementById("cardnumber").value = kartennummer;
+    document.getElementById("nameSearch").value = (vorname + ' ' + nachname).trim();
+    document.getElementById("userStatus").value = status;
+    document.getElementById("userStatus").className = statusColor || "normal";
+    document.getElementById("quelle").value = quelleMap[data.quelle] || data.quelle || '';
+    document.getElementById("OElong").value = data.Einrichtung || '';
+    document.getElementById("MSTBROE").value = data.MSTBROE || '';
+    document.getElementById("DVH_TEXT").value = data.Funktion || '';
+    document.getElementById("mifareid_paxton").value = data.mifareidpaxton || '';
+    document.getElementById("createtime").value = data.Erstellzeit || '';
+    document.getElementById("Austritt").value =
+        data.Vertragsende ||
+        data.Austritt ||
+        data.EndOfContract ||
+        '';
+    document.getElementById("benutzergruppe").value =
+        data.benutzergruppe_name || data.Abteilung || data.benutzergruppe || '';
+    let accessLevels = [];
+    if (Array.isArray(data.berechtigungsgruppe_name)) {
+        accessLevels = data.berechtigungsgruppe_name;
+    } else if (data.berechtigungsgruppe_name) {
+        accessLevels = [data.berechtigungsgruppe_name];
+    } else if (Array.isArray(data.AccessLevels)) {
+        accessLevels = data.AccessLevels;
+    }
+    document.getElementById("berechtigungsgruppe").value =
+        accessLevels.length > 0 ? accessLevels.join(", ") : "Keine";
+        const individualPermissions = data.individualPermissions_names || data.individualPermissions || [];
+        document.getElementById("individualPermissions").value = Array.isArray(data.individualPermissions_names) && data.individualPermissions_names.length > 0
+            ? data.individualPermissions_names.join("\n")
+            : "Keine";
+    if (kartennummer) {
+        checkCardStatus(kartennummer);
+    }
+}
+ 
+function showResultsList(data, containerId) {
+    const resultsContainer = document.getElementById(containerId);
+    resultsContainer.innerHTML = "";
+    if (!Array.isArray(data) || data.length === 0) {
+        resultsContainer.innerHTML = "<li>Keine Ergebnisse gefunden.</li>";
+        return;
+    }
+    data.forEach(item => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <span class="name">${item.vorname} ${item.nachname}</span>
+            <span class="status" style="color:${item.statusColor};margin-left:8px;">${item.status}</span>
+            <span class="cardnumber" style="margin-left:8px;">Karten-Nr: ${item.kartennummer}</span>
+            <span class="employeeNumber" style="margin-left:8px;">Pers-Nr: ${item.employeeNumber}</span>
+        `;
+        li.addEventListener('click', function() {
+            document.getElementById("cardnumber").value = item.kartennummer;
+            fetchAndFillUserFields(
+                item.kartennummer,
+                item.employeeNumber,
+                item.status // <-- evtl. item.Status je nach Datenstruktur!
+            );
+            document.getElementById("KartennummerResults").innerHTML = "";
+            document.getElementById("employeeNumberResults").innerHTML = "";
+            document.getElementById("autocompleteResults").innerHTML = "";
+        });
+        resultsContainer.appendChild(li);
+    });
+}
+
+function fetchAndFillUserFields(cardnumber, employeeNumber = null, status = null) {
+    fetch(`/api/search_by_card?kartennummer=${encodeURIComponent(cardnumber)}`)
+        .then(response => response.json())
+        .then(userList => {
+            if (Array.isArray(userList)) {
+                let selectedUser = userList.find(u => 
+                    (u.kartennummer === cardnumber || u.cardnumber === cardnumber) &&
+                    (employeeNumber == null || u.employeeNumber === employeeNumber || u.employeenumber === employeeNumber) &&
+                    (status == null || u.status === status || u.Status === status)
+                );
+                if (!selectedUser) selectedUser = userList[0];
+                if (selectedUser) fillUserFields(selectedUser);
+                else alert("Kein Benutzer gefunden!");
+            } else if (userList && typeof userList === 'object') {
+                fillUserFields(userList);
+            } else {
+                alert("Kein Benutzer gefunden!");
+            }
+        });
+}
+  
+
+
+
+
+
+        </script>
+    </body>
+    </html>

@@ -1,0 +1,511 @@
+{% load static %} <!-- um statik feilen hinzufügen -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'Tabelle/paxton_tabelle.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="top-bar">
+        <div class="program-button-group">
+          {% for k in knopf %}
+          <button class="programButton" onclick="window.location.href='{% url k.url_name %}'">
+            {{ k.title }}
+          </button>
+        {% endfor %}
+        </div>
+        <div>
+          <div style="position: relative; width: 100%;"></div>
+          <button id="hideFormButton" class="transparent-button" onclick="hideForm()" style="display: none;">Menü schließen</button>
+            <button id="menuButton" class="transparent-button" onclick="showMenu()">☰ Menü</button>
+            <div id="programButtonGroup" class="program-button-group" style="display: none;">
+              <div id="paxtonOptions" class="top-bar-right" style="display: none;">
+                {% for m in menu %}
+                  <button class="paxtonChangeButton" onclick="window.location.href='{% url m.url_name %}'" style="display: none;">
+                    {{ m.title }}
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+        </div>
+    </div>
+    <div id="paxtonTableWrapper" style="display: block;">
+        <table id="userTable">
+            <div class="PaxtonÜbergang">
+                <label for="PaxtonÜbergang">Ausgewählte Kartennummer:</label>
+                <input type="text" id="PaxtonÜbergang" placeholder="Die Nummer eingeben oder aus der Tabelle auswählen"  >
+            </div>
+            <thead> 
+              <div class="filter-container">
+                <label for="DBFilter">Benutzergruppe:</label>
+                <select id="DBFilter" name="benutzertyp" class="custom-select"
+                    onchange="location.href='?benutzertyp='+this.value">
+                    <option value="Alle">Alle</option>
+                    <option value="Mitarbeiter" {% if benutzertyp == "Mitarbeiter" %}selected{% endif %}>Mitarbeiter</option>
+                    <option value="Gäste" {% if benutzertyp == "Gäste" %}selected{% endif %}>Gäste</option>
+                    <option value="Studenten" {% if benutzertyp == "Studenten" %}selected{% endif %}>Studenten</option>
+                </select>
+              </div>
+                <tr>
+
+                    <th class="resize">Personalnummer
+                        <select class="sort-select" data-key="employeenumber">
+                            <option value="">Alle</option>
+                            <option value="asc">Alte</option>
+                            <option value="desc">Neue</option>
+                        </select>
+                    </th>
+                    <th class="resize">Kartennummer
+                        <select class="sort-select" data-key="kartennummer">
+                            <option value="">Alle</option>
+                            <option value="asc">Alte</option>
+                            <option value="desc">Neue</option>
+                        </select>
+                    </th>
+                    <th class="resize">Name und Nachname</th>
+                    <th class="resize">Status
+                        <select id="statusFilter" data-key="active" class="custom-select">
+                          <option value=""></option>
+                            <option value="">Alle</option>
+                            <option value="Aktiv">Aktiv</option>
+                            <option value="Inaktiv">Inaktiv</option>
+                            <option value="VerloreneKarte">Verlorene Karte</option>
+                        </select>
+                    </th>
+                    <th class="resize">Abteilung</th>
+                    <th class="resize">Funktion</th>
+                    <th class="resize">Zurletzt verwendet
+                        <select class="sort-select" data-key="gedruckt_am">
+                            <option value="">Alle</option>
+                            <option value="asc">Alter</option>
+                            <option value="desc">Neue</option>
+                        </select>
+                    </th>
+                    <th class="resize">Erstellzeit
+                        <select class="sort-select" data-key="createtime">
+                            <option value="">Alle</option>
+                            <option value="asc">Alte</option>
+                            <option value="desc">Neue</option>
+                        </select>
+                    </th>
+                    <th class="resize">Vertragsende
+                        <select class="sort-select" data-key="austritt">
+                            <option value="">Alle</option>
+                            <option value="asc">Alte</option>
+                            <option value="desc">Neue</option>
+                        </select>
+                    </th>
+                    <th class="resize">Benutzergruppe</th>
+                    <th class="resize">Berechtigungsgruppe</th>
+                    <th class="resize">Individuelle Berechtigung
+                        <select class="sort-select" data-key="individualpermissions">
+                            <option value="">Alle</option>
+                            <option value="Ja">Alle mit Individuelle Berechtigungen</option>
+                        </select>
+                    </th>
+                    <th class="resize">Schranknummer
+                        <select class="sort-select" id="schrankFilter" data-key="schrank">
+                            <option value="">Alle</option>
+                            <option value="Mit dem Schrank">Mit dem Schrank</option>
+                        </select>
+                    </th>
+                    <!-- <th class="resize">Parkkartenummer
+                        <select class="sort-select" data-key="parkkartenummer">
+                            <option value="">alle</option>
+                            <option value="asc">Alte</option>
+                            <option value="desc">Neue</option>
+                        </select>
+                    </th> -->
+                </tr>
+                <tr>
+                    <td><input type="text" class="filter" data-key="employeenumber" name="employeenumber" placeholder="Personalnummer eingeben"></td>
+                    <td><input type="text" class="filter" data-key="kartennummer" name="kartennummer" placeholder="Kartennummer eingeben"></td>
+                    <td><input type="text" class="filter" data-key="name_full" name="name_full" placeholder="Name und Nachname eingeben"></td>
+                    <td><input type="text" name="" readonly></td>
+                    <td><input type="text" class="filter" data-key="einrichtung" name="einrichtung" placeholder="Abteilung eingeben"></td>
+                    <td><input type="text" class="filter" data-key="funktion" name="funktion" placeholder="Funktion eingeben"></td>
+                    <td><input type="text" name="gelesen_am" placeholder="Zuletzt verwendet"></td>
+                    <td><input type="text" class="filter" data-key="createtime" name="createtime" placeholder="Erstellzeit"></td>
+                    <td><input type="text" name="verlorene_karte" placeholder="Verlorene Karte"></td>
+                    <td><input type="text" class="filter" data-key="benutzergruppe" name="benutzergruppe" placeholder="Benutzergruppe"></td>
+                    <td><input type="text" class="filter" data-key="berechtigungsgruppe" name="berechtigungsgruppe" placeholder="Berechtigungsgruppe"></td>
+                    <td><input type="text" name="individualpermissions" readonly></td>
+                    <td><input type="text" class="filter" data-key="schrank" name="schrank" placeholder="Schranknummer"></td>
+                    <!-- <td><input type="text" class="filter" data-key="parkkartenummer" name="parkkartenummer" placeholder="Parkkartenummer eingeben"></td> -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in benutzer_liste %}
+                <tr>
+                  <td>{{ user.employeenumber }}</td>
+                  <td>{{ user.kartennummer }}</td>
+                  <td>{{ user.name_full }}</td>
+                  <td><span class="${user.StatusClass}">${user.Status}</span></td>
+                  <td>{{ user.abteilung }}</td>
+                  <td>{{ user.funktion }}</td>
+                  <td>{{ user.gelesen_am }}</td>
+                  <td>{{ user.createtime }}</td>
+                  <td>{{ user.vertragsende }}</td>
+                  <td>{{ user.benutzergruppe }}</td>
+                  <td>{{ user.berechtigungsgruppe }}</td>
+                  <td>{{ user.individualpermissions }}</td>
+                  <td>{{ user.schrank }}</td>
+                  <!-- <td>{{ user.parkkartenummer }}</td> -->
+                  <td>{{ user.mstbroe }}</td>
+                  <td>{{ user.dvh_text }}</td>
+                    <td></td>
+                </tr>
+                {% endfor %}
+        </table>
+        <div class="pagination">
+          {% if page > 1 %}
+              <a href="?page={{ page|add:-1 }}&per_page={{ per_page }}&benutzertyp={{ benutzertyp }}">Zurück</a>
+          {% endif %}
+          <span id="pageInfo">Seite {{ page }}</span>
+          {% if benutzer_liste|length == per_page %}
+              <a href="?page={{ page|add:1 }}&per_page={{ per_page }}&benutzertyp={{ benutzertyp }}">Weiter</a>
+          {% endif %}
+      </div>
+  </div>
+    <script>
+
+
+function handleProgramChange(program) {
+  if (program === 'paxton') {
+    const cardNumber = document.getElementById('PaxtonÜbergang').value.trim();
+    if (cardNumber) {
+      window.open(`/paxton?kartennummer=${encodeURIComponent(cardNumber)}`, '_blank');
+    } else {
+      window.open('/paxton', '_blank');
+    }
+  }
+}
+
+
+// ?✓ Filter Patche loadTableData, um DB-Filter richtig zu behandeln
+function getFilterParams() {
+    const filters = {};
+    document.querySelectorAll('.filter').forEach(input => {
+        let val = input.value.trim();
+        // Nur für die Datumsspalten: Wenn exakt 4 Ziffern = Jahr, dann Sondereintrag
+      if (val) {
+          filters[input.dataset.key] = val;
+      }
+    });
+    const dbFilter = document.getElementById('DBFilter');
+    if (dbFilter && dbFilter.value) {
+        filters['DBFilter'] = dbFilter.value;
+    }
+    return filters;
+}
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dbFilter = document.getElementById('DBFilter');
+    if (dbFilter) {
+        dbFilter.addEventListener('change', function() {
+            loadTableData(1);
+        });
+    }
+});
+
+
+//  ?✓ Passe loadTableData an, damit Backend das neue Jahr-Filter akzeptiert, ODER filtere im Frontend:
+function loadTableData(page = 1, status = "") {
+    currentPage = page;
+    currentStatus = status;
+    const filters = getFilterParams();
+    const sort = getSortParams();
+    let url = `/get_users?page=${page}&per_page=30`;
+    if (status) url += `&status=${encodeURIComponent(status)}`;
+    Object.keys(filters).forEach(key => {
+        url += `&filter_${encodeURIComponent(key)}=${encodeURIComponent(filters[key])}`;
+    });
+    if (sort.field_map && sort.order) {
+        url += `&field_map=${encodeURIComponent(sort.field_map)}&order=${encodeURIComponent(sort.order)}`;
+    }
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Serverfehler: " + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Hier die Tabelle komplett neu aufbauen!
+            // z.B. tableBody.innerHTML = ...;
+        })
+        .catch(error => {
+            console.error("[JS] Fehler beim Laden der Daten:", error);
+        });
+}
+
+// ?✓  Das sorgt dafür, dass deine Tabelle neu geladen wird, wenn der User einen Filter/Suchbegriff oder Sortierung eingibt.
+document.querySelectorAll('.filter, .sort-select').forEach(el => {
+    el.addEventListener('change', () => loadTableData(1));
+    el.addEventListener('input', () => loadTableData(1));
+});
+document.getElementById("statusFilter").addEventListener('change', function() {
+    loadTableData(1, this.value);
+});
+window.onload = () => { loadTableData(); };
+
+
+
+
+
+
+
+
+
+document.querySelector('input[data-key="benutzergruppe"]').addEventListener('change', function() {
+  this.value = this.value.trim();
+  loadTableData(1);
+});
+document.querySelector('input[data-key="berechtigungsgruppe"]').addEventListener('change', function() {
+  this.value = this.value.trim();
+  loadTableData(1);
+});
+
+
+
+//Autocomplete für Benutzergruppe/Berechtigungsgruppe
+
+// function loadAutocompleteOptions(type, datalistId) {
+//   fetch(`/get_filter_options?type=${type}`)
+//     .then(response => response.json())
+//     .then(options => {
+//       const datalist = document.getElementById(datalistId);
+//       datalist.innerHTML = "";
+//       if (Array.isArray(options)) {
+//         options.forEach(opt => {
+//           const option = document.createElement("option");
+//           option.value = opt;
+//           datalist.appendChild(option);
+//         });
+//       } else if (Array.isArray(options[type])) {
+//         options[type].forEach(opt => {
+//           const option = document.createElement("option");
+//           option.value = opt;
+//           datalist.appendChild(option);
+//         });
+//       }
+//     });
+// }
+function loadAutocompleteOptions(type, datalistId) {
+  fetch(`/get_filter_options?type=${type}`)
+    .then(response => response.json())
+    .then(options => {
+      const datalist = document.getElementById(datalistId);
+      if (!datalist) {
+        console.warn("Datalist-Element nicht gefunden:", datalistId);
+        return; // Funktion abbrechen, wenn Element nicht existiert
+      }
+      datalist.innerHTML = "";
+      if (Array.isArray(options)) {
+        options.forEach(opt => {
+          const option = document.createElement("option");
+          option.value = opt;
+          datalist.appendChild(option);
+        });
+      } else if (Array.isArray(options[type])) {
+        options[type].forEach(opt => {
+          const option = document.createElement("option");
+          option.value = opt;
+          datalist.appendChild(option);
+        });
+      }
+    });
+}
+document.querySelector('input[data-key="benutzergruppe"]').addEventListener('focus', function() {
+  loadAutocompleteOptions('benutzergruppen', 'benutzergruppeOptions');
+});
+document.querySelector('input[data-key="berechtigungsgruppe"]').addEventListener('focus', function() {
+  loadAutocompleteOptions('berechtigungsgruppen', 'berechtigungsgruppeOptions');
+});
+
+//PaxtonÜbergang tippen => Filterung der Tabelle
+document.addEventListener("DOMContentLoaded", function() {
+  const paxtonInput = document.getElementById('PaxtonÜbergang');
+  if (paxtonInput) {
+    paxtonInput.addEventListener('input', function() {
+      const tableFilter = document.querySelector('input.filter[data-key="Kartennummer"]');
+      if (tableFilter) {
+        tableFilter.value = paxtonInput.value;
+        loadTableData(1);
+      }
+    });
+  }
+});
+
+
+
+//??? nev berectigungsname
+function getSortParams() {
+    let field_map = "";
+    let order = "";
+    document.querySelectorAll("select.sort-select").forEach(select => {
+        if (select.value && select.value !== "") {
+          field_map = select.dataset.key;
+            order = (select.value === "az" || select.value === "asc") ? "ASC" : "DESC";
+        }
+        
+    });
+    return { field_map, order };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Kartennummer in das PaxtonÜbergang Feld übernehmen
+document.addEventListener("DOMContentLoaded", () => {
+  const table = document.getElementById("userTable");
+  table.addEventListener("click", function(event) {
+    const clickedCell = event.target;
+    if (clickedCell.tagName === "TD" && clickedCell.dataset.column === "Kartennummer") {
+      const kartennummer = clickedCell.textContent.trim();
+      document.getElementById("PaxtonÜbergang").value = kartennummer;
+    }
+  });
+});
+
+function sendePaxtonNummer() {
+    const kartennummer = document.getElementById('PaxtonÜbergang').value;
+    fetch('/paxton_api', {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({kartennummer})
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert("Server sagt: " + data.status);
+    });
+}
+
+
+//Datalist-Optionen laden
+function loadOptions(field, datalistId) {
+  fetch('/get_datalist_options?field=' + encodeURIComponent(field))
+    .then(res => res.json())
+    .then(options => {
+      const datalist = document.getElementById(datalistId);
+      datalist.innerHTML = "";
+      options.forEach(opt => {
+        const optionElem = document.createElement("option");
+        optionElem.value = opt;
+        datalist.appendChild(optionElem);
+      });
+    });
+}
+loadOptions('MSTBROE', 'mstbroe-datalist');
+loadOptions('DVH_TEXT', 'DVH_TEXT-datalist');
+loadOptions('schrank', 'schrank-datalist');
+loadOptions('kartennummer', 'kartennummer-datalist');
+loadOptions('employeeNumber', 'employeeNumber-datalist');
+loadOptions('createtime', 'createtime-datalist');
+loadOptions('Austritt', 'Austritt-datalist');
+
+document.addEventListener("DOMContentLoaded", function() {
+  fetch('/get_name_options')
+    .then(res => res.json())
+    .then(options => {
+      const datalist = document.getElementById("name-datalist");
+      datalist.innerHTML = "";
+      options.forEach(opt => {
+        const optionElem = document.createElement("option");
+        optionElem.value = opt;
+        datalist.appendChild(optionElem);
+      });
+    });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//  ✓  manuele funktion ✓
+function showMenu() {  
+  document.getElementById("programButtonGroup").style.display = "block"; 
+  document.getElementById("paxtonOptions").style.display = "block";
+  document.querySelectorAll(".paxtonChangeButton").forEach(btn => {
+    btn.style.display = "inline-block";
+  });
+  document.getElementById("hideFormButton").style.display = "block";
+  document.getElementById("menuButton").style.display = "none";
+  console.log("showMenu triggered!");
+}
+
+function hideForm() {
+  document.getElementById("hideFormButton").style.display = "none";
+  document.getElementById("menuButton").style.display = "inline-block";
+  document.querySelectorAll(".paxtonChangeButton").forEach(btn => {
+    btn.style.display = "none";
+  });
+  document.getElementById("paxtonOptions").style.display = "none";
+  document.getElementById("programButtonGroup").style.display = "none";
+}
+
+    // ✓     Spaltenresizer per Maus verändert 
+    document.addEventListener("DOMContentLoaded", () => {
+  const table = document.getElementById('userTable');
+  document.querySelectorAll("th.resize").forEach(th => {
+    const resizer = document.createElement("div");
+    resizer.className = "resizer";
+    th.appendChild(resizer);
+    let startX, startWidth;
+    resizer.addEventListener("mousedown", function (e) {
+      startX = e.clientX;
+      startWidth = th.offsetWidth;
+      function onMouseMove(e) {
+        const newWidth = startWidth + (e.clientX - startX);
+        th.style.width = `${newWidth}px`;
+        const index = Array.from(th.parentNode.children).indexOf(th);
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+          const cell = row.cells[index];
+          if (cell) {
+            cell.style.width = `${newWidth}px`;  
+          }
+        });
+      }
+      function onMouseUp() {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      }
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    });
+  });
+});
+    </script>
+</body>
+</html>
+
