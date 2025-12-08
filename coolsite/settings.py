@@ -109,11 +109,11 @@ WSGI_APPLICATION = 'coolsite.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'mssql',
-        'NAME': '**',
-        'HOST': '**',
+        'NAME': 'HCM_Daten',
+        'HOST': 'sql2022-ao',
         'PORT': '',  # leer lassen, falls Standard
         'OPTIONS': {
-            'driver': '**',
+            'driver': 'ODBC Driver 17 for SQL Server',
             'trusted_connection': 'yes',
         },
     }
@@ -159,7 +159,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
 
-PAXTON_API_BASE = os.getenv('PAXTON_API_BASE', 'http://**')
+PAXTON_API_BASE = os.getenv('PAXTON_API_BASE', 'http://sr00041895.medi.local:8080/api/v1')
 PAXTON_API_KEY = os.getenv('PAXTON_API_KEY', '')
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [

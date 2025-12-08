@@ -8,7 +8,7 @@ import os
 import re
 
 # Konfiguration 
-PAXTON_BASE = getattr(settings, "PAXTON_API_BASE", "**").rstrip("/")
+PAXTON_BASE = getattr(settings, "PAXTON_API_BASE", "http://sr00041895.medi.local:8080/api/v1").rstrip("/")
 REQUEST_TIMEOUT = getattr(settings, "PAXTON_REQUEST_TIMEOUT", 15)
 
 TOKEN_URL = f"{PAXTON_BASE}/authorization/tokens"
@@ -18,45 +18,14 @@ DEPARTMENT_URL = f"{PAXTON_BASE}/users/{{userId}}/departments"
 ACCESS_LEVELS_URL = f"{PAXTON_BASE}/accesslevels"
 DEPARTMENTS_URL = f"{PAXTON_BASE}/departments"
 
-def update_access_level(level_id, new_name, token=None):
-    token = token or get_token()
-    if not token:
-        return False, 500, "Kein Token"
-    existing = get_access_level_by_id(level_id, token)
-    if not existing:
-        return False, 404, "Nicht gefunden"
-    payload = {
-        "id": existing.get("id", level_id),
-        "name": new_name,
-        "detailRows": existing.get("detailRows", []) if isinstance(existing, dict) else []
-    }
-    try:
-        url = f"{ACCESS_LEVELS_URL}/{level_id}"
-        resp = requests.put(url, headers=_headers(token), json=payload, timeout=REQUEST_TIMEOUT)
-        if resp.status_code in (200, 204):
-            try:
-                return True, resp.status_code, resp.json() if resp.text else {}
-            except Exception:
-                return True, resp.status_code, {}
-        elif resp.status_code == 409:
-            return False, 409, "Name already exists"
-        else:
-            try:
-                return False, resp.status_code, resp.json()
-            except Exception:
-                return False, resp.status_code, resp.text
-    except Exception:
-        logger.exception("Fehler beim Update des AccessLevel %s", level_id)
-        return False, 500, "Error"
 
 
 
 
-
-USERNAME = getattr(settings, "PAXTON_USERNAME", "**")
-PASSWORD = getattr(settings, "PAXTON_PASSWORD", "**")
+USERNAME = getattr(settings, "PAXTON_USERNAME", "OEM Client")
+PASSWORD = getattr(settings, "PAXTON_PASSWORD", "GodotekAzikabu")
 GRANT_TYPE = getattr(settings, "PAXTON_GRANT_TYPE", "password")
-CLIENT_ID = getattr(settings, "PAXTON_CLIENT_ID", "*")
+CLIENT_ID = getattr(settings, "PAXTON_CLIENT_ID", "18a5f964-f120-4fe0-a31a-6ccd3995cb13")
 
 
 
@@ -304,7 +273,11 @@ def add_user_token(token, user_id, token_value):
     response = requests.post(url, headers=headers, json=payload)
     return response
 def create_access_level(token: str, name: str, area_ids: list = None, timezone_id: int = 1):
-
+    """
+    Legt ein neues Access Level an (POST /accesslevels).
+    Wenn area_ids nicht übergeben werden, fragt die API /accesslevels/areas und
+    nimmt die erste gefundene areaID. Liefert die API-Antwort (dict) zurück.
+    """
     token = token or get_token()
     if not token:
         raise RuntimeError("Kein Paxton-Token")
