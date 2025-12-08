@@ -7,38 +7,12 @@ body, html  {
 }
 
 
-#autocompleteResults {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid #ccc;
-  max-width: 300px;
-}
-
-#autocompleteResults li {
-  padding: 5px;
-  cursor: pointer;
-}
-
-#autocompleteResults li:hover {
-  background-color: #f0f0f0;
-}
-
-.editable { background-color: #ffffcc; }
-.normal { background-color: white; }
-
-.dropdown {
-  position: absolute;
-  background: white;
-  border: 1px solid #ccc;
-  z-index: 10;
-}
 
 tr input::placeholder {
   color: #bdbdbd;     
   font-style: italic;  
   font-size: 1em;
-  opacity: 1;          
+  opacity: 1px;          
 }
 
 tr input[placeholder] {
@@ -162,35 +136,11 @@ tbody tr:hover {
   color: #5f946b
 }
 
-
-.sort-select {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  background-color: #ccc;
-  border-radius: 2px;
-  cursor: pointer;
-}
-
-.statusFilter{
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  background-color: #ccc;
-  border-radius: 2px;
-  cursor: pointer;
-}
-/* wie select id="DBFilter" und select id="statusFilter" ausseht */
-.status-green  { color: green; font-weight: bold; }
-.status-gray   { color: gray;  font-weight: bold; }
-.status-red    { color: red;   font-weight: bold; }
-.status-black  { color: black; font-weight: bold; }
+/* Status */
+.status-active   { color: #2e7d32; font-weight: bold; }
+.status-inactive { color: #666;    font-weight: bold; }
+.status-lost     { color: #c45252; font-weight: bold; }
+.status-unknown  { color: #6c4fe7; font-weight: bold; }
 .custom-select {
   appearance: none;
   -webkit-appearance: none;
@@ -220,12 +170,6 @@ tbody tr:hover {
   border-color: #222;
 }
 
-
-
-
-
-
-
 .Program{
   padding: 10px;
   font-size: 16px;
@@ -245,14 +189,6 @@ tbody tr:hover {
   position: relative;
 }
 
-
-
-select.Program {
-  font-size: 16px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
 .top-bar-right {
   position: absolute;
   right: 20px;
@@ -284,9 +220,6 @@ select.Program {
 .top-bar-right button:hover {
   background-color: #3d9941;
 }
-.gray { background-color: white; color: gray; }
-.green { background-color: white; color: green; }
-.normal { background-color: white; color: black; }
 
 .program-button-group {
   display: inline-block;
@@ -298,12 +231,11 @@ select.Program {
   
 }
 
-
 .programButton {
   padding: 8px 8px 8px 18px;  /* oben rechts unten links */
   width: 115%;
   background-color: #69ce71;
-  font-size: 19px;
+  font-size: 16px;
   color: rgb(0, 0, 0);
   border: none;
   border-radius: 5px;
@@ -313,13 +245,11 @@ select.Program {
   text-align: left;           /* Text linksbündig */
 }
 
-
 .programButton:last-child {
   margin-right: 0; 
 }
 
 .transparent-button {
-  
   background-color: transparent;
   color: gray; 
   border: 1px solid gray;
@@ -362,67 +292,15 @@ th {
   position: relative;
 }
 
-
-
-.selected-row { background: #e0f0ff !important; }
 label {
   font-weight: bold;
   width: 40%;
   text-align: left;
 }
-.PaxtonÜbergang input {
-  font-size: 14px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #f0f0f0;
-  box-sizing: border-box;
-  width: 15%;
-  resize: none;
-  overflow-y: auto;
-  margin-right: 0;
-  margin-bottom: 14px;
-}
 
-
-
-.matrix-table {
-  border-collapse: collapse;
-  width: 100%;
-  text-align: center;
-  background: #fff;
-}
-.matrix-table th, .matrix-table td {
-  border: 1px solid #b7b7b7;
-  padding: 8px 12px;
-  min-width: 60px;
-}
-.matrix-table th {
-  background: #c7e3ef;
-  font-weight: bold;
-}
-.matrix-table tr:nth-child(even) {
-  background: #f5fafd;
-}
-.matrix-table td:first-child, .matrix-table th:first-child {
-  background: #e8f2f9;
-  text-align: left;
-  font-weight: bold;
-}
 .hidden { display: none; }
-.overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.3);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 10;
-}
-.modal {
-  background: #fff;
-  padding: 2em;
-  border-radius: 10px;
-  min-width: 350px;
-  box-shadow: 0 2px 20px #0003;
-}
+
+
 /* Rahmen um den Filterbereich */
 .filter-container {
   display: flex;
@@ -448,15 +326,16 @@ label {
 }
 
 /*  leicht dunkler Hintergrund */
-#DBFilter.custom-select {
-  font-size: 1px;
-  padding: 0px 10px 0px 10px;
+#DBFilter {
+  min-width: 140px;
+  font-size: 15px;
+  height: 28px;
+  padding: 4px 10px;
   border-radius: 4px;
   border: 1px solid #bbb;
   background: #cfd8dc;
-  color: #000000;
+  color: #000;
   appearance: none;
-  min-width: 135px;  
   outline: none;
   cursor: pointer;
   background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="15" viewBox="0 0 24 24" width="15" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');

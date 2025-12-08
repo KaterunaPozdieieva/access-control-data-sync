@@ -1,10 +1,4 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
+
 from django.db import models
 
 
@@ -43,9 +37,17 @@ class TGast(models.Model):
     individualpermissions = models.CharField(db_column='individualPermissions', max_length=500, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     mifareid_paxton = models.CharField(max_length=10, db_collation='Latin1_General_CI_AS')
 
+    #button in admin panel 'web seite aufmachen.
+    def get_absolute_url(self):
+        return reverse('post', kwargs={'post_id': self.pk})
+
     class Meta:
         managed = False
         db_table = 't_Gast'
+        ordering = ['createtime', 'kartennummer']
+        verbose_name = 'Gäste_Tabelle'
+        verbose_name_plural = 'Gäste_Tabelle'
+
 
 
 class TStudenten(models.Model):
@@ -84,9 +86,21 @@ class TStudenten(models.Model):
     individualpermissions = models.CharField(db_column='individualPermissions', max_length=500, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     mifareid_paxton = models.CharField(max_length=10, db_collation='Latin1_General_CI_AS')
 
+
+        #button in admin panel 'web seite aufmachen.
+    def get_absolute_url(self):
+        return reverse('post', kwargs={'post_id': self.pk})
     class Meta:
         managed = False
         db_table = 't_studenten'
+        ordering = ['createtime', 'kartennummer']
+        verbose_name = 'Studenten_Tabelle'
+        verbose_name_plural = 'Studenten_Tabelle'
+        
+
+
+
+
 
 
 class PaxtonViewWeb(models.Model):
@@ -106,10 +120,22 @@ class PaxtonViewWeb(models.Model):
     mstbroe = models.CharField(db_column='MSTBROE', max_length=50, blank=True, null=True)  # Field name made lowercase.
     dvh_text = models.CharField(db_column='DVH_TEXT', max_length=255, blank=True, null=True)  # Field name made lowercase.
     schrank = models.IntegerField(blank=True, null=True)
-    mitarbeiter_active = models.BooleanField(blank=True, null=True)
     karte_active = models.BooleanField(blank=True, null=True)
     verlorene_karte = models.BooleanField(blank=True, null=True)
+
+
+        #button in admin panel 'web seite aufmachen.
+    def get_absolute_url(self):
+        return reverse('post', kwargs={'post_id': self.pk})
+
+
+
+
 
     class Meta:
         managed = False
         db_table = 'paxton_view_web'
+        ordering = ['createtime', 'kartennummer']
+        verbose_name = 'Mitarbeiten_Tabelle'
+        verbose_name_plural = 'Mitarbeiten_Tabelle'
+

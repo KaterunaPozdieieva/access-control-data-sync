@@ -1,230 +1,135 @@
-<!--{% load static %}  um statik feilen hinzufügen -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neue_Berechtigungsname</title>
     <link rel="stylesheet" type="text/css" href="{% static 'Neue_Berechtigungsname/Neue_Berechtigungsname.css' %}">
-    <!-- <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
   <div class="form-container">
     <div class="change-group-form" id="changeGroupForm">
-        <label for="accessLevelInput">Berechtigungsgruppe:</label>
-        <input list="accessLevelOptions" id="accessLevelInput" placeholder="Berechtigungsgruppe eingeben oder auswählen">
-        <datalist id="accessLevelOptions"></datalist>
 
-        <label for="newAccessLevel">Neuer Berechtigungsname:</label>
-        <input type="text" id="newAccessLevel" placeholder="Neuer Berechtigungsname eingeben">
-        <button class="speichen" id="enderungspeichen">Änderungen speichern</button>
+        {# Rendere Django messages sichtbar #}
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+
+          <label for="accessLevelInput">Berechtigungsgruppe:</label>
+          <input class="accessLevelInput"
+            list="accessLevelOptions"
+            id="accessLevelInput"
+            name="accessLevelInput"
+            placeholder="Berechtigungsgruppe eingeben oder auswählen"
+            autocomplete="off"
+            value="{% if access_levels and access_levels.name %}{{ access_levels.name }}{% endif %}">
+
+          <input type="hidden"
+            id="access_level_id"
+            name="access_level_id"
+            value="{% if access_levels and access_levels.0.id %}{{ access_levels.0.id }}{% endif %}">
+          <datalist class="accessLevelOptions" aria-hidden="true" id="accessLevelOptions">
+            {% for level in access_levels %}
+              <option value="{{ level.name }}" data-id="{{ level.id }}"></option>
+            {% endfor %}
+          </datalist>
+
+          <label for="newAccessLevel">Neuer Berechtigungsname:</label>
+          <input class="newAccessLevel" type="text" id="newAccessLevel" name="newAccessLevel" placeholder="Neuer Berechtigungsname eingeben">
+          <button type="submit" class="speichen" id="enderungspeichen">Änderungen speichern</button>
+        </form>
     </div>
   </div>
 
   <div>
-    {% for a in abbrechen %}
-    <button class="verlassen" onclick="window.location.href='{% url a.url_name %}'">
-      {{ a.title }}</button>
-    {% endfor %}
+    {% if abbrechen %}
+      {% for a in abbrechen %}
+        <button class="verlassen" onclick="window.location.href='{% url a.url_name %}'">
+          {{ a.title }}
+        </button>
+      {% endfor %}
+    {% endif %}
   </div>
-
-
-  <!-- test -->
-  <div id="debugOutput" style="margin-top: 20px; padding: 10px; background: #f0f0f0; font-family: monospace;">
-    <strong>Geladene Namen:</strong>
-    <pre id="debugText">noch nichts geladen...</pre>
-  </div>
-  
 
   <script>
-    function loadAutocompleteOptions(type, datalistId) {
-      fetch(`/get_filter_options?type=${type}`)
-        .then(response => response.json())
-        .then(options => {
-          // Debug-Ausgabe auf Seite
-          document.getElementById("debugText").textContent = JSON.stringify(options, null, 2);
-    
-          const datalist = document.getElementById(datalistId);
-          if (!datalist) {
-            console.warn("Datalist-Element nicht gefunden:", datalistId);
-            return;
-          }
-    
-          datalist.innerHTML = "";
-          if (Array.isArray(options)) {
-            options.forEach(opt => {
-              const option = document.createElement("option");
-              option.value = opt;
-              datalist.appendChild(option);
-            });
-          }
-        })
-        .catch(err => {
-          document.getElementById("debugText").textContent = "Fehler: " + err;
-          console.error(err);
-        });
-    }
-    
-    document.addEventListener("DOMContentLoaded", function() {
-      loadAutocompleteOptions("accesslevels", "accessLevelOptions");
-    });
-    </script>
-    
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.querySelector("form");
+      if (!form) return;
 
+      const input = document.getElementById("accessLevelInput");
+      const datalist = document.getElementById("accessLevelOptions");
+      const hiddenId = document.getElementById("access_level_id");
 
- 
-<!-- <script>
-// Aktualisiert die Datalist für Berechtigungsgruppen dynamisch
-function updateAccessLevelDropdown(accessLevels) {
-  const datalist = document.getElementById("accessLevelOptions");
-  datalist.innerHTML = "";
-  accessLevels.forEach(level => {
-    const option = document.createElement("option");
-    option.value = level.name;
-    datalist.appendChild(option);
-  });
-}
-
-// Holt die Namen dynamisch von der API und füllt eine beliebige Datalist
-function loadAutocompleteOptions(type, datalistId) {
-  fetch(`/get_filter_options?type=${type}`)
-    .then(response => response.json())
-    .then(options => {
-      const datalist = document.getElementById(datalistId);
-      if (!datalist) {
-        console.warn("Datalist-Element nicht gefunden:", datalistId);
-        return;
+      function syncHiddenIdFromInput() {
+        if (!input || !datalist || !hiddenId) return;
+        const val = (input.value || "").trim();
+        const option = Array.from(datalist.options).find(o => (o.value || "").trim() === val);
+        if (option && option.dataset && option.dataset.id) {
+          hiddenId.value = option.dataset.id;
+        } else {
+          hiddenId.value = "";
+        }
       }
-      datalist.innerHTML = "";
-      if (Array.isArray(options)) {
-        options.forEach(opt => {
-          const option = document.createElement("option");
-          option.value = opt;
-          datalist.appendChild(option);
-        });
-      } else if (Array.isArray(options[type])) {
-        options[type].forEach(opt => {
-          const option = document.createElement("option");
-          option.value = opt;
-          datalist.appendChild(option);
-        });
-      }
+
+      input?.addEventListener("input", syncHiddenIdFromInput);
+      input?.addEventListener("change", syncHiddenIdFromInput);
+      input?.addEventListener("blur", syncHiddenIdFromInput);
+      input?.addEventListener("focus", syncHiddenIdFromInput);
+
+      form.addEventListener("submit", (ev) => {
+        syncHiddenIdFromInput();
+
+        let oldName = "";
+        const select = document.getElementById("accessLevelSelect");
+        if (select) {
+          oldName = select.options[select.selectedIndex]?.text || "";
+        } else if (input) {
+          oldName = input.value || "";
+        }
+
+        const levelId = hiddenId ? hiddenId.value : "";
+        const newNameEl = document.getElementById("newAccessLevel");
+        const newName = newNameEl ? newNameEl.value.trim() : "";
+
+        if (!oldName) {
+          ev.preventDefault();
+          alert("Bitte wählen Sie zuerst eine Berechtigungsgruppe aus.");
+          (input || select || newNameEl)?.focus();
+          return;
+        }
+        if (!newName) {
+          ev.preventDefault();
+          alert("Bitte geben Sie einen neuen Namen ein.");
+          newNameEl?.focus();
+          return;
+        }
+
+        const msgParts = [
+          `Alte Berechtigungsgruppename: "${oldName}"`,
+          levelId ? `ID: ${levelId}` : null,
+          `Neuer Berechtigungsgruppename: "${newName}"`,
+          "",
+          "Möchten Sie den alten Namen durch den neuen Namen ersetzen?"
+        ].filter(Boolean);
+        const confirmText = msgParts.join("\n");
+        const ok = confirm(confirmText);
+        if (!ok) {
+          ev.preventDefault();
+          newNameEl?.focus();
+          return;
+        }
+      });
     });
-}
-
-// Beispiel: Berechtigungsgruppen nach Laden der Seite automatisch holen
-document.addEventListener("DOMContentLoaded", function() {
-  loadAutocompleteOptions("accesslevels", "accessLevelOptions");
-});
-</script> -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- // function changeAccessLevel() {
-//   const selectedLevel = document.getElementById("accessLevelInput").value.trim();
-//   const newLevelName = document.getElementById("newAccessLevel").value.trim();
-//   if (!selectedLevel || !newLevelName) {
-//     alert("Bitte geben Sie sowohl die ausgewählte Berechtigungsgruppe als auch den neuen Namen ein.");
-//     return;
-//   }
-//   if (confirm(`Sind Sie sicher, dass Sie den Namen der Berechtigungsgruppe von "${selectedLevel}" in "${newLevelName}" ändern möchten?`)) {
-//     fetch("/change_access_level", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({
-//         selected_level: selectedLevel,
-//         new_level_name: newLevelName
-
-//       })
-//     })
-//       .then(response => response.json()
-//         .then(data => ({ status: response.status, body: data }))
-//       )
-//       .then(({ status, body }) => {
-//         if (status !== 200) {
-//           if (body && body.details && typeof body.details === "string" && body.details.includes("already exists")) {
-//             alert("Es existiert bereits eine Berechtigungsgruppe mit diesem Namen. Bitte wählen Sie einen anderen Namen!");
-//           } else if (body && body.error) {
-//             alert(body.error);
-//           } else {
-//             alert("Unbekannter Fehler beim Speichern.");
-//           }
-//         } else {
-//           alert(body.message || "Änderungen erfolgreich gespeichert!");
-//           if (body.access_levels) {
-//             updateAccessLevelDropdown(body.access_levels);
-//           }
-//           window.location.reload();
-//         }
-//       })
-//       .catch(error => {
-//         alert("Netzwerk- oder Serverfehler: " + error);
-//       })
-//       .finally(() => {
-//         hideForm();
-//       });
-//   }
-// } -->
-
-</body> 
+  </script>
+</body>
+</html>
