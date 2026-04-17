@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-%+z%40s#5p$kt67349r1wb4pav64@x*_*bq5nwe#wzr*n3$97z'
+load_dotenv(BASE_DIR / '.env')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecureq5nwe#wzr*n3$97z')
 
-
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 
 #ip adres schreiben
@@ -39,7 +39,7 @@ LOGGING = {
         '()': 'Tabelle.logging.MonthlyFileHandler',
         'level': 'INFO',
         'formatter': 'verbose',
-        'dirname': r'U:\DIT\Applikation\Schließmanagement\Paxton_api\LOGdjango',
+        'dirname': r'K:\DIT\Applikation\Schließmanagement\Paxton_api\LOGdjango',
         'filename_prefix': 'django-paxton',
     },
     },
@@ -70,7 +70,8 @@ INSTALLED_APPS = [
     'Tabelle.apps.TabelleConfig',
     'Formular.apps.FormularConfig',
     'Neue_Berechtigungsname.apps.NeueBerechtigungsnameConfig',
-    'tests'
+    'synchronisation.apps.SynchronisationConfig'
+    # 'tests'
 ]
 
 MIDDLEWARE = [
@@ -107,21 +108,20 @@ WSGI_APPLICATION = 'coolsite.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'HCM_Daten',
-        'HOST': 'sql2022-ao',
-        'PORT': '',  # leer lassen, falls Standard
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-            'trusted_connection': 'yes',
+    "default": {
+        "ENGINE": "mssql",
+        "NAME": "SAP_Daten",
+        "HOST": "sql20",
+        "PORT": "",
+        "OPTIONS": {
+            "driver": "ODBC Driver 18 for SQL Server",
+            "extra_params": "Encrypt=yes;TrustServerCertificate=yes;",
         },
     }
 }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -139,8 +139,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
 
 LANGUAGE_CODE = 'de-de'
 
@@ -151,15 +150,18 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-load_dotenv(BASE_DIR / '.env')
 
-PAXTON_API_BASE = os.getenv('PAXTON_API_BASE', 'http://sr00041895.medi.local:8080/api/v1')
+
+
+
+
+PAXTON_API_BASE = os.getenv('PAXTON_API_BASE', 'https://sr00044444.medi.local:8443/api/v1').rstrip("/")
+PAXTON_CERT_PATH = os.getenv(
+    "PAXTON_CERT_PATH",
+    r"K:\DIT\Applikation\Schließmanagement\Paxton_api\Net2API.crt",
+)
 PAXTON_API_KEY = os.getenv('PAXTON_API_KEY', '')
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
@@ -169,7 +171,6 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

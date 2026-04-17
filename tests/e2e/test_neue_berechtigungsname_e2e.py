@@ -2,6 +2,7 @@ from playwright.sync_api import Page, expect
 import pathlib
 import time
 import json
+
 BASE_URL = "http://127.0.0.1:8000"
 PAGE_PATH = "/Neue_Berechtigungsname/"
 def _save_debug(page: Page, name: str = "debug"):

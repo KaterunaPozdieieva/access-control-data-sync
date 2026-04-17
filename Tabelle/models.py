@@ -3,28 +3,15 @@ from django.db import models
 
 
 class TGast(models.Model):
-    ext_oid = models.IntegerField()
-    ext_id = models.IntegerField()
     employeenumber = models.CharField(db_column='employeeNumber', max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     sn = models.CharField(max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     givenname = models.CharField(db_column='givenName', max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     title = models.CharField(max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    title_berichtigt = models.CharField(max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    kategorie = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    schrank_nr_alt = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    schrank_nr_neu = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     schrank = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     funktion = models.CharField(max_length=1024, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    funktion_kurz = models.CharField(max_length=1024, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    adt = models.CharField(db_column='ADT', max_length=10, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
-    einrichtung_lang = models.CharField(max_length=1024, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     einrichtung = models.CharField(max_length=512, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    bild = models.CharField(max_length=1, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    anrede = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    layout = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     gedruckt_am = models.DateTimeField(blank=True, null=True)
     kartennummer = models.IntegerField(blank=True, null=True)
-    barcode = models.IntegerField(blank=True, null=True)
     createtime = models.DateTimeField(blank=True, null=True)
     modifytime = models.DateTimeField(blank=True, null=True)
     mifareid_dez = models.CharField(max_length=40, db_collation='Latin1_General_CI_AS', blank=True, null=True)
@@ -51,24 +38,13 @@ class TGast(models.Model):
 
 
 class TStudenten(models.Model):
-    ext_oid = models.IntegerField()
-    ext_id = models.IntegerField()
     employeenumber = models.CharField(db_column='employeeNumber', max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     sn = models.CharField(max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     givenname = models.CharField(db_column='givenName', max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     title = models.CharField(max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    title_berichtigt = models.CharField(max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    kategorie = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    schrank_nr_neu = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     schrank = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     funktion = models.CharField(max_length=1024, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    funktion_kurz = models.CharField(max_length=1024, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    adt = models.CharField(db_column='ADT', max_length=10, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
-    einrichtung_lang = models.CharField(max_length=1024, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     einrichtung = models.CharField(max_length=512, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    bild = models.CharField(max_length=1, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    anrede = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    layout = models.CharField(max_length=255, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     gedruckt_am = models.DateTimeField(blank=True, null=True)
     kartennummer = models.IntegerField(blank=True, null=True)
     barcode = models.IntegerField(blank=True, null=True)
@@ -77,10 +53,7 @@ class TStudenten(models.Model):
     mifareid_dez = models.CharField(max_length=40, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     benutzergruppe = models.CharField(max_length=60, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     berechtigungsgruppe = models.CharField(max_length=60, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    gelesen_am = models.DateTimeField(blank=True, null=True)
     abteilung = models.CharField(max_length=128, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    kst = models.CharField(max_length=12, db_collation='Latin1_General_CI_AS', blank=True, null=True)
-    unterabteilung = models.CharField(max_length=192, db_collation='Latin1_General_CI_AS', blank=True, null=True)
     active = models.BooleanField(blank=True, null=True)
     verlorene_karte = models.BooleanField(blank=True, null=True)
     individualpermissions = models.CharField(db_column='individualPermissions', max_length=500, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.

@@ -2,23 +2,20 @@ from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render, redirect
 from django.db import connection, transaction, DatabaseError
 from django.contrib import messages
-from django.http import HttpResponseNotFound, JsonResponse
+from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
+from django.utils.html import escape
 import re
 import logging
 from django.urls import reverse
 
 from Tabelle.models import PaxtonViewWeb, TGast, TStudenten
 from Tabelle.utils import get_benutzer_liste, get_user_status
-from Tabelle.Paxton_all import (
-    get_token, get_user_tokens, get_departments_dict,
-    get_access_levels_dict_from_fetch, fetch_all_access_levels,
-    get_paxton_user_id_by_kartennummer, delete_paxton_user,
-    create_or_update_paxton_user, add_user_token, create_or_update_department,
-    create_paxton_user, create_access_level, update_paxton_user,
-    save_to_paxton, save_to_db
-)
+from Tabelle.Paxton_all import get_access_levels_dict_from_fetch, save_to_paxton, save_to_db
 
+
+from synchronisation.Paxton_funk import create_or_update_department, get_token, get_user_tokens, fetch_all_access_levels, get_paxton_user_id_by_kartennummer, delete_paxton_user, create_or_update_paxton_user, add_user_token, create_access_level, update_paxton_user, get_departments_dict
 logger = logging.getLogger('paxton')
+
 
 def _normalize_token_value(v):
     if v is None:
@@ -29,216 +26,13 @@ def _normalize_token_value(v):
     s = s.strip()
     return s[-8:] if len(s) >= 1 else None
 
+
+
 @require_POST
 def restore_card(request):
-    """
-    Restore a card: set active = 1 (and reset verlorene_karte if column exists)
-    in all relevant tables and update/create the Paxton user.
-    Reads values from request.POST and logs actions.
-    """
-    kartennummer = (request.POST.get('kartennummer') or "").strip()
-    mifare = (request.POST.get('mifareid_paxton') or "").strip()
-    employeeNumber = (request.POST.get('employeenumber') or request.POST.get('employeeNumber') or "").strip()
 
-    givenname = (request.POST.get('givenname') or "").strip()
-    sn = (request.POST.get('sn') or "").strip()
-    abteilung = (request.POST.get('abteilung') or "").strip()
-    funktion = (request.POST.get('funktion') or "").strip()
-    einrichtung = (request.POST.get('einrichtung') or "").strip()
-    benutzergruppe_id = (request.POST.get('benutzergruppe') or "").strip()
-    access_levels_raw = (request.POST.get('berechtigungsgruppe') or "").strip()
+    return ()
 
-    action_user = request.user.username if getattr(request.user, "is_authenticated", False) else 'anonymous'
-    client_ip = request.META.get('REMOTE_ADDR', '')
-    log_extra = {'username': action_user, 'clientip': client_ip}
-
-    logger.info(
-        "restore_card called: kartennummer=%r employeeNumber=%r mifare=%r by=%s",
-        kartennummer, employeeNumber, mifare, action_user,
-        extra=log_extra
-    )
-
-    if not kartennummer:
-        messages.error(request, "Kartennummer fehlt.")
-        return redirect(reverse('formular'))
-
-    # initialize counters so they exist even if early exception occurs
-    rc1 = rc2 = rc3 = rc4 = 0
-
-    try:
-        mk_has_verl = column_exists('dbo', 'mitarbeiterKarte', 'verlorene_karte')
-        hcm_has_verl = column_exists('dbo', 'HCM_mitarbeiter', 'verlorene_karte')
-        stu_has_verl = column_exists('dbo', 't_studenten', 'verlorene_karte')
-        gast_has_verl = column_exists('dbo', 't_Gast', 'verlorene_karte')
-
-        with transaction.atomic():
-            with connection.cursor() as c:
-                if mk_has_verl:
-                    if mifare:
-                        c.execute(
-                            """
-                            UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte]
-                            SET active = 1, verlorene_karte = 0
-                            WHERE kartennummer = %s
-                              AND (mifareid_paxton = %s OR COALESCE(NULLIF(mifareid_paxton, ''), '') = %s)
-                            """, (kartennummer, mifare, mifare)
-                        )
-                    else:
-                        c.execute(
-                            "UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte] SET active = 1, verlorene_karte = 0 WHERE kartennummer = %s",
-                            (kartennummer,)
-                        )
-                else:
-                    if mifare:
-                        c.execute(
-                            "UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte] SET active = 1 WHERE kartennummer = %s AND (mifareid_paxton = %s OR COALESCE(NULLIF(mifareid_paxton, ''), '') = %s)",
-                            (kartennummer, mifare, mifare)
-                        )
-                    else:
-                        c.execute("UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte] SET active = 1 WHERE kartennummer = %s", (kartennummer,))
-                rc1 = c.rowcount
-                logger.info("mitarbeiterKarte UPDATE rowcount=%s (mk_has_verl=%s)", rc1, mk_has_verl, extra=log_extra)
-
-                params = [kartennummer]
-                where_clause = "kartennummer = %s"
-                if mifare:
-                    where_clause += " AND (mifareid_paxton = %s OR COALESCE(NULLIF(mifareid_paxton, ''), '') = %s)"
-                    params.extend([mifare, mifare])
-                if employeeNumber:
-                    where_clause += " AND employeeNumber = %s"
-                    params.append(employeeNumber)
-                if hcm_has_verl:
-                    sql_hcm = f"UPDATE [HCM_Daten].[dbo].[HCM_mitarbeiter] SET active = 1, verlorene_karte = 0 WHERE id IN (SELECT mitarbeiter_id FROM [HCM_Daten].[dbo].[mitarbeiterKarte] WHERE {where_clause})"
-                else:
-                    sql_hcm = f"UPDATE [HCM_Daten].[dbo].[HCM_mitarbeiter] SET active = 1 WHERE id IN (SELECT mitarbeiter_id FROM [HCM_Daten].[dbo].[mitarbeiterKarte] WHERE {where_clause})"
-                c.execute(sql_hcm, params)
-                rc2 = c.rowcount
-                logger.info("HCM_mitarbeiter UPDATE rowcount=%s (hcm_has_verl=%s)", rc2, hcm_has_verl, extra=log_extra)
-
-                if stu_has_verl:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_studenten] SET active = 1, verlorene_karte = 0 WHERE kartennummer = %s", (kartennummer,))
-                else:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_studenten] SET active = 1 WHERE kartennummer = %s", (kartennummer,))
-                rc3 = c.rowcount
-                logger.info("t_studenten UPDATE rowcount=%s (stu_has_verl=%s)", rc3, stu_has_verl, extra=log_extra)
-
-                if gast_has_verl:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_Gast] SET active = 1, verlorene_karte = 0 WHERE kartennummer = %s", (kartennummer,))
-                else:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_Gast] SET active = 1 WHERE kartennummer = %s", (kartennummer,))
-                rc4 = c.rowcount
-                logger.info("t_Gast UPDATE rowcount=%s (gast_has_verl=%s)", rc4, gast_has_verl, extra=log_extra)
-
-        token = get_token()
-        if token:
-            user_payload = {
-                "firstName": givenname or "",
-                "lastName": sn or "",
-                "employeeNumber": employeeNumber or "",
-                "customFields": [
-                    {"id": 5, "value": str(kartennummer)},
-                    {"id": 14, "value": str(employeeNumber or "")},
-                ]
-            }
-            if abteilung:
-                user_payload["customFields"].append({"id": 1, "value": str(abteilung)})
-            if funktion:
-                user_payload["customFields"].append({"id": 4, "value": str(funktion)})
-            if einrichtung:
-                user_payload["customFields"].append({"id": 3, "value": str(einrichtung)})
-
-            try:
-                access_levels = []
-                if access_levels_raw:
-                    candidates = re.split(r'[,\;\|\s]+', access_levels_raw)
-                    all_levels = fetch_all_access_levels(token) or []
-                    name_to_id = { (l.get("name") or "").strip().lower(): str(l.get("id")) for l in all_levels if l and (l.get("id") or l.get("Id")) }
-                    for p in candidates:
-                        p = p.strip()
-                        if not p:
-                            continue
-                        if p.isdigit():
-                            access_levels.append(int(p))
-                        else:
-                            pid = name_to_id.get(p.lower())
-                            if pid:
-                                access_levels.append(int(pid))
-                if access_levels:
-                    user_payload["accessLevels"] = access_levels
-            except Exception:
-                logger.exception("Error resolving access levels", extra=log_extra)
-
-            try:
-                res = create_or_update_paxton_user(token, kartennummer, user_payload)
-                paxton_id = res.get("paxton_id")
-                logger.info("Paxton create_or_update result=%s", res, extra=log_extra)
-            except Exception as e:
-                logger.exception("Error in create_or_update_paxton_user", extra=log_extra)
-                messages.warning(request, f"DB wiederhergestellt, aber Fehler beim Paxton-Update: {e}")
-                return redirect(f"{reverse('formular')}?selected={kartennummer}")
-
-            if paxton_id and mifare:
-                try:
-                    tokval = _normalize_token_value(mifare)
-                    if tokval:
-                        existing = get_user_tokens(token, paxton_id) or []
-                        existing_vals = set()
-                        for tkn in existing:
-                            v = tkn.get("tokenValue") or tkn.get("token_value") or tkn.get("token") or ""
-                            if v:
-                                vv = str(v)
-                                if vv.startswith("0#"):
-                                    vv = vv[2:]
-                                existing_vals.add(vv[-8:])
-                        if tokval not in existing_vals:
-                            r = add_user_token(token, paxton_id, tokval)
-                            logger.info("add_user_token resp=%s text=%s", getattr(r, "status_code", None), getattr(r, "text", None), extra=log_extra)
-                        else:
-                            logger.info("Token %s already exists for paxton_id=%s", tokval, paxton_id, extra=log_extra)
-                except Exception:
-                    logger.exception("Error adding user token", extra=log_extra)
-
-            if paxton_id and benutzergruppe_id:
-                try:
-                    department_map = get_departments_dict(token) or {}
-                    department_name = None
-                    department_id_for_api = None
-
-                    if str(benutzergruppe_id).isdigit():
-                        department_id_for_api = int(benutzergruppe_id)
-                        department_name = department_map.get(str(department_id_for_api))
-                    else:
-                        for k, v in department_map.items():
-                            if v and v.strip().lower() == str(benutzergruppe_id).strip().lower():
-                                try:
-                                    department_id_for_api = int(k)
-                                except Exception:
-                                    department_id_for_api = None
-                                department_name = v
-                                break
-
-                    dept_id_to_pass = department_id_for_api if department_id_for_api is not None else 0
-                    create_or_update_department(paxton_id, token, dept_id_to_pass, department_name or str(benutzergruppe_id))
-                    logger.info("Department set for paxton_id=%s id=%s name=%s", paxton_id, dept_id_to_pass, department_name or benutzergruppe_id, extra=log_extra)
-                except Exception:
-                    logger.exception("Error setting department", extra=log_extra)
-
-            messages.success(request, f"Karte {kartennummer} wiederhergestellt und Paxton aktualisiert.")
-        else:
-            messages.success(request, f"Karte {kartennummer} wiederhergestellt (kein Paxton-Token).")
-            logger.warning("No Paxton token for restore_card", extra=log_extra)
-
-        total_changed = sum(x or 0 for x in (rc1, rc2, rc3, rc4))
-        logger.info("restore_card finished total_changed=%s", total_changed, extra=log_extra)
-
-    except DatabaseError as e:
-        logger.exception("DB error restoring card %s: %s", kartennummer, e, extra=log_extra)
-        messages.error(request, f"Datenbank-Fehler: {e}")
-    except Exception as e:
-        logger.exception("Unexpected error restoring card %s: %s", kartennummer, e, extra=log_extra)
-        messages.error(request, f"Interner Fehler: {e}")
-
-    return redirect(f"{reverse('formular')}?selected={kartennummer}")
 
 @require_POST
 def save_data(request):
@@ -260,9 +54,9 @@ def save_data(request):
         benutzergruppe = None
         berechtigungsgruppe = None
         if benutzergruppe_value:
-            benutzergruppe = int(benutzergruppe_value) if str(benutzergruppe_value).isdigit() else benutzergruppe_value
+            benutzergruppe = int(benutzergruppe_value) if str(benutzergruppe_value).isdigit() else None
         if berechtigungsgruppe_value:
-            berechtigungsgruppe = int(berechtigungsgruppe_value) if str(berechtigungsgruppe_value).isdigit() else berechtigungsgruppe_value
+            berechtigungsgruppe = int(berechtigungsgruppe_value) if str(berechtigungsgruppe_value).isdigit() else None
 
         db_result = save_to_db(kartennummer, benutzergruppe, berechtigungsgruppe)
 
@@ -293,26 +87,16 @@ def deaktiv_card(request):
         return redirect('formular')
 
     try:
+        # DB-Teil komplett über Stored Procedure
         with transaction.atomic():
             with connection.cursor() as c:
+                # Für SQL Server (pyodbc + Django): EXEC dbo.proc @p=?,@p=? ist zuverlässig
                 c.execute(
-                    "UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte] "
-                    "SET active = 0 "
-                    "WHERE kartennummer = %s AND (mifareid_paxton = %s OR (mifareid_paxton IS NULL AND %s = ''))",
-                    (kartennummer, mifare, mifare)
+                    "EXEC [dbo].[sp_deaktiv_card] %s, %s, %s",
+                    [kartennummer, mifare or None, emp or None]
                 )
-                params = [kartennummer, mifare, mifare]
-                where = "kartennummer = %s AND (mifareid_paxton = %s OR (mifareid_paxton IS NULL AND %s = ''))"
-                if emp:
-                    where += " AND employeeNumber = %s"
-                    params.append(emp)
-                c.execute(
-                    f"UPDATE [HCM_Daten].[dbo].[HCM_mitarbeiter] SET active = 0 "
-                    f"WHERE id IN (SELECT mitarbeiter_id FROM [HCM_Daten].[dbo].[mitarbeiterKarte] WHERE {where})",
-                    params
-                )
-                c.execute("UPDATE [HCM_Daten].[dbo].[t_studenten] SET active = 0 WHERE kartennummer = %s", (kartennummer,))
-                c.execute("UPDATE [HCM_Daten].[dbo].[t_Gast] SET active = 0 WHERE kartennummer = %s", (kartennummer,))
+
+        # Danach (außerhalb DB-Transaktion) Paxton
         try:
             token = get_token()
             if token:
@@ -326,7 +110,8 @@ def deaktiv_card(request):
                 messages.success(request, f"Karte {kartennummer} deaktiviert (kein Paxton-Token).")
         except Exception:
             logger.exception("Paxton-Löschung fehlgeschlagen")
-            messages.warning(request, f"Karte deaktiviert. Fehler beim Paxton-Löschen.")
+            messages.warning(request, "Karte deaktiviert. Fehler beim Paxton-Löschen.")
+
     except DatabaseError as e:
         logger.exception("DB-Fehler beim Deaktivieren")
         messages.error(request, f"Datenbank-Fehler: {e}")
@@ -336,134 +121,58 @@ def deaktiv_card(request):
 
     return redirect('formular')
 
-def column_exists(schema: str, table: str, column: str) -> bool:
-    with connection.cursor() as c:
-        c.execute(
-            "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS "
-            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s",
-            (schema, table, column)
-        )
-        return c.fetchone() is not None
 
 @require_POST
 def lost_card(request):
     kartennummer = (request.POST.get('kartennummer') or "").strip()
     mifare = (request.POST.get('mifareid_paxton') or "").strip()
     emp = (request.POST.get('employeeNumber') or "").strip()
-    action_user = request.user.username if getattr(request.user, "is_authenticated", False) else 'anonymous'
-    client_ip = request.META.get('REMOTE_ADDR', '')
-    log_extra = {'username': action_user, 'clientip': client_ip}
-    logger.info("lost_card start: kartennummer=%r mifare=%r emp=%r", kartennummer, mifare, emp, extra=log_extra)
 
     if not kartennummer:
         messages.error(request, "Kartennummer fehlt.")
         return redirect(reverse('formular'))
 
     try:
-        mk_has_verl = column_exists('dbo', 'mitarbeiterKarte', 'verlorene_karte')
-        hcm_has_verl = column_exists('dbo', 'HCM_mitarbeiter', 'verlorene_karte')
-        stu_has_verl = column_exists('dbo', 't_studenten', 'verlorene_karte')
-        gast_has_verl = column_exists('dbo', 't_Gast', 'verlorene_karte')
-
         with transaction.atomic():
             with connection.cursor() as c:
-                if mk_has_verl:
-                    if mifare:
-                        c.execute(
-                            """
-                            UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte]
-                            SET active = 0, verlorene_karte = 1
-                            WHERE kartennummer = %s
-                              AND (mifareid_paxton = %s OR COALESCE(NULLIF(mifareid_paxton, ''), '') = %s)
-                            """, (kartennummer, mifare, mifare)
-                        )
-                    else:
-                        c.execute(
-                            "UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte] SET active = 0, verlorene_karte = 1 WHERE kartennummer = %s",
-                            (kartennummer,)
-                        )
-                else:
-                    if mifare:
-                        c.execute(
-                            """
-                            UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte]
-                            SET active = 0
-                            WHERE kartennummer = %s
-                              AND (mifareid_paxton = %s OR COALESCE(NULLIF(mifareid_paxton, ''), '') = %s)
-                            """, (kartennummer, mifare, mifare)
-                        )
-                    else:
-                        c.execute(
-                            "UPDATE [HCM_Daten].[dbo].[mitarbeiterKarte] SET active = 0 WHERE kartennummer = %s",
-                            (kartennummer,)
-                        )
-                rc1 = c.rowcount
-                logger.info("mitarbeiterKarte UPDATE rowcount=%s (mk_has_verl=%s)", rc1, mk_has_verl, extra=log_extra)
+                c.execute(
+                    "EXEC dbo.sp_lost_card %s, %s, %s",
+                    [kartennummer, mifare or None, emp or None]
+                )
 
-                params = [kartennummer]
-                where_clause = "kartennummer = %s"
-                if mifare:
-                    where_clause += " AND (mifareid_paxton = %s OR COALESCE(NULLIF(mifareid_paxton, ''), '') = %s)"
-                    params.extend([mifare, mifare])
-                if emp:
-                    where_clause += " AND employeeNumber = %s"
-                    params.append(emp)
-                if hcm_has_verl:
-                    sql_hcm = f"UPDATE [HCM_Daten].[dbo].[HCM_mitarbeiter] SET active = 0, verlorene_karte = 1 WHERE id IN (SELECT mitarbeiter_id FROM [HCM_Daten].[dbo].[mitarbeiterKarte] WHERE {where_clause})"
-                else:
-                    sql_hcm = f"UPDATE [HCM_Daten].[dbo].[HCM_mitarbeiter] SET active = 0 WHERE id IN (SELECT mitarbeiter_id FROM [HCM_Daten].[dbo].[mitarbeiterKarte] WHERE {where_clause})"
-                c.execute(sql_hcm, params)
-                rc2 = c.rowcount
-                logger.info("HCM_mitarbeiter UPDATE rowcount=%s (hcm_has_verl=%s)", rc2, hcm_has_verl, extra=log_extra)
+        logger.info(
+            "lost_card: DB erfolgreich aktualisiert (kartennummer=%s, mifare=%s, emp=%s)",
+            kartennummer, mifare, emp,
+        )
 
-                if stu_has_verl:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_studenten] SET active = 0, verlorene_karte = 1 WHERE kartennummer = %s", (kartennummer,))
-                else:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_studenten] SET active = 0 WHERE kartennummer = %s", (kartennummer,))
-                rc3 = c.rowcount
-                logger.info("t_studenten UPDATE rowcount=%s (stu_has_verl=%s)", rc3, stu_has_verl, extra=log_extra)
-
-                if gast_has_verl:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_Gast] SET active = 0, verlorene_karte = 1 WHERE kartennummer = %s", (kartennummer,))
-                else:
-                    c.execute("UPDATE [HCM_Daten].[dbo].[t_Gast] SET active = 0 WHERE kartennummer = %s", (kartennummer,))
-                rc4 = c.rowcount
-                logger.info("t_Gast UPDATE rowcount=%s (gast_has_verl=%s)", rc4, gast_has_verl, extra=log_extra)
-
+        # Paxton (außerhalb der DB-Transaktion)
         try:
             token = get_token()
-            logger.info("lost_card: get_token present=%s", bool(token), extra=log_extra)
             if token:
                 paxtonid = get_paxton_user_id_by_kartennummer(kartennummer, token)
-                logger.info("lost_card: paxton lookup kartennummer=%s -> paxtonid=%s", kartennummer, paxtonid, extra=log_extra)
                 if paxtonid:
                     ok = delete_paxton_user(token, paxtonid)
-                    logger.info("lost_card: delete_paxton_user returned %s for paxtonid=%s", ok, paxtonid, extra=log_extra)
                     if ok:
                         messages.success(request, f"Karte {kartennummer} als verloren markiert und Paxton-User entfernt.")
                     else:
                         messages.warning(request, f"Karte {kartennummer} als verloren markiert. Paxton-Löschung fehlgeschlagen (siehe Logs).")
                 else:
                     messages.success(request, f"Karte {kartennummer} als verloren markiert (kein Paxton-User gefunden).")
-                    logger.info("lost_card: kein Paxton-User für kartennummer=%s", kartennummer, extra=log_extra)
             else:
                 messages.success(request, f"Karte {kartennummer} als verloren markiert (kein Paxton-Token).")
-                logger.warning("lost_card: kein Paxton token - Löschung übersprungen", extra=log_extra)
         except Exception:
-            logger.exception("Fehler beim Paxton-Löschen für kartennummer=%s", kartennummer, extra=log_extra)
-            messages.warning(request, f"Karte als verloren markiert. Fehler beim Paxton-Löschen (siehe Logs).")
-
-        total = sum(x or 0 for x in (rc1, rc2, rc3, rc4))
-        logger.info("lost_card abgeschlossen: total_changed=%s (mk=%s,hcm=%s,stu=%s,gast=%s)", total, rc1, rc2, rc3, rc4, extra=log_extra)
+            logger.exception("Fehler beim Paxton-Löschen für kartennummer=%s", kartennummer)
+            messages.warning(request, "Karte als verloren markiert. Fehler beim Paxton-Löschen (siehe Logs).")
 
     except DatabaseError as e:
-        logger.exception("DB-Fehler beim Markieren verloren kartennummer=%s: %s", kartennummer, e, extra=log_extra)
+        logger.exception("DB-Fehler beim Markieren verloren kartennummer=%s: %s", kartennummer, e)
         messages.error(request, f"Datenbank-Fehler: {e}")
     except Exception as e:
-        logger.exception("Unerwarteter Fehler beim Markieren verloren kartennummer=%s: %s", kartennummer, e, extra=log_extra)
+        logger.exception("Unerwarteter Fehler beim Markieren verloren kartennummer=%s: %s", kartennummer, e)
         messages.error(request, f"Interner Fehler: {e}")
 
     return redirect(f"{reverse('formular')}?selected={kartennummer}")
+
 
 
 def formular_view(request):
@@ -472,7 +181,10 @@ def formular_view(request):
 
     if selected:
         for model, typ in [(PaxtonViewWeb, "Mitarbeiter"), (TGast, "Gast"), (TStudenten, "Student")]:
-            obj = model.objects.filter(kartennummer=selected).first()
+            try:
+                obj = model.objects.filter(kartennummer=selected).order_by('-row_id').first()
+            except Exception:
+                obj = model.objects.filter(kartennummer=selected).first()
             if obj is not None:
                 benutzer_info = row_to_dict(obj, typ)
                 break
@@ -543,6 +255,14 @@ def row_to_dict(obj, typ=None):
             d[field.name] = val
     if typ:
         d['quelle'] = typ
+    # vertragsende aus austritt oder endofcontract befüllen
+    if not d.get('vertragsende'):
+        raw = d.get('austritt') or d.get('endofcontract')
+        if raw:
+            try:
+                d['vertragsende'] = raw.strftime('%Y-%m-%d')
+            except Exception:
+                d['vertragsende'] = str(raw)
     return d
 
 @require_GET
@@ -649,6 +369,96 @@ def autocomplete_user(request):
 
     return JsonResponse(results, safe=False)
 
+
+
+@require_GET
+def autocomplete_user_html(request):
+    """Server-Side Autocomplete — gibt fertige HTML <li> zurück für HTMX."""
+    term = request.GET.get("term", "").strip().lower()
+    field = request.GET.get("field", "")  # employeenumber / kartennummer / name_full
+
+    # term aus dem richtigen Feld lesen
+    if not term:
+        val = (request.GET.get("employeeNumber") or request.GET.get("kartennummer") or request.GET.get("name_full") or "").strip().lower()
+        term = val
+
+    if not term:
+        return HttpResponse("")
+
+    results = []
+    seen_keys = set()
+
+    for typ in ["paxton_view_web", "t_studenten", "t_Gast"]:
+        try:
+            users, _ = get_benutzer_liste(typ, 1, 500000, "employeenumber", "ASC")
+        except Exception:
+            users = []
+
+        for u in users:
+            if isinstance(u, dict):
+                kart = str(u.get("kartennummer") or "").lower()
+                emp  = str(u.get("employeenumber") or "").lower()
+                name = str(u.get("name_full") or "").lower()
+                kartennummer   = u.get("kartennummer") or ""
+                employeenumber = u.get("employeenumber") or ""
+                name_full      = u.get("name_full") or ""
+            else:
+                kart = str(getattr(u, "kartennummer", "") or "").lower()
+                emp  = str(getattr(u, "employeenumber", "") or "").lower()
+                gn   = getattr(u, "givenname", "") or ""
+                sn   = getattr(u, "sn", "") or ""
+                name = (f"{gn} {sn}").strip().lower()
+                kartennummer   = getattr(u, "kartennummer", "") or ""
+                employeenumber = getattr(u, "employeenumber", "") or ""
+                name_full      = f"{gn} {sn}".strip()
+
+            if term not in kart and term not in emp and term not in name:
+                continue
+
+            key = kart or emp or (name + "_" + typ)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
+            status_label, status_color = get_user_status(u)
+            results.append({
+                "kartennummer": kartennummer,
+                "employeenumber": employeenumber,
+                "name_full": name_full,
+                "status": status_label,
+                "statusColor": status_color,
+            })
+
+            if len(results) >= 50:  # max 50 Ergebnisse reichen
+                break
+        if len(results) >= 50:
+            break
+
+    # HTML rendern
+    from django.utils.html import escape
+    html_parts = []
+    for r in results:
+        kart = escape(str(r["kartennummer"]))
+        name = escape(str(r["name_full"]))
+        emp  = escape(str(r["employeenumber"]))
+        stat = escape(str(r["status"]))
+        color = escape(str(r["statusColor"]))
+        url = f"/Formular/?selected={kart}"
+        html_parts.append(
+            f'<li onclick="window.location.href=\'{url}\'" class="{color}" style="cursor:pointer;list-style:none;padding:4px 8px;">' +
+            f'<span class="name">{name}</span>' +
+            f' | <span class="status">{stat}</span>' +
+            f' | Karten-Nr: <span class="kartennummer">{kart}</span>' +
+            f' | Pers-Nr: <span class="employeenumber">{emp}</span>' +
+            f'</li>'
+        )
+
+    if not html_parts:
+        return HttpResponse('<li>Keine Ergebnisse gefunden.</li>')
+
+    from django.http import HttpResponse
+    return HttpResponse("".join(html_parts))
+
 @require_GET
 def api_departments(request):
     try:
@@ -663,7 +473,6 @@ def api_departments(request):
 @require_GET
 def api_accesslevels(request):
     try:
-        from Tabelle.Paxton_all import fetch_all_access_levels, get_token
         token = get_token()
         levels = fetch_all_access_levels() if token else []
         clean_levels = []

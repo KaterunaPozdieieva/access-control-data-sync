@@ -4,7 +4,8 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_GET
 from django.contrib import messages
-from Tabelle.Paxton_all import fetch_all_access_levels, update_access_level, get_token
+from Tabelle.Paxton_all import update_access_level
+from synchronisation.Paxton_funk import fetch_all_access_levels, get_token
 
 logger = logging.getLogger('paxton')
 
@@ -41,7 +42,7 @@ def Neue_Berechtigungsname(request):
                 ok, status, data = update_access_level(level_id_int, new_name, token)
                 if ok:
                     messages.success(request, "Berechtigungsgruppe erfolgreich umbenannt.")
-                    logger.info("Access level %s renamed to %s (status=%s)", level_id_int, new_name, status)
+                    logger.info("Berechtigungsgruppe umbenannt: ID=%s | Alter Name='%s' | Neuer Name='%s' | Status=%s", level_id_int, selected_name, new_name, status)
                     return redirect("Neue_Berechtigungsname")
                 else:
                     if status == 409 or (isinstance(data, str) and "already exists" in str(data).lower()):

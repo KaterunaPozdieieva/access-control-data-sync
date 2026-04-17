@@ -1,7 +1,10 @@
 # Bereinigte Utility-Funktionen für Benutzer-Suche / Liste
 from datetime import datetime
 from django.db.models import Q
+import logging
 from Tabelle.models import TGast, TStudenten, PaxtonViewWeb
+
+logger = logging.getLogger('paxton')
 
 def clean_none(data):
     """Ersetzt None durch leere Strings – für saubere Ausgabe."""
@@ -193,7 +196,13 @@ def get_benutzer_liste(benutzertyp, page, per_page, sort_by, order, filters=None
     for model, quelle in models_to_query:
         qs = model.objects.all()
         qs = _apply_filters_to_queryset(model, qs, filters)
-        qs = qs[:500000]  # Begrenze pro Modell
+        # DB-seitig sortieren statt alle in Python laden
+        valid_fields = [f.name for f in model._meta.fields]
+        db_sort = sort_by if sort_by in valid_fields else default_sort
+        if db_sort not in valid_fields:
+            db_sort = valid_fields[0]
+        db_order_field = f"-{db_sort}" if str(order).upper() == "DESC" else db_sort
+        qs = qs.order_by(db_order_field)
 
         for row in qs:
             if quelle == "Gast":

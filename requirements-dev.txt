@@ -1,7 +1,0 @@
-pytest
-pytest-django
-pytest-mock
-responses
-python-dotenv
-mssql-django
-pyodbc

@@ -13,7 +13,7 @@ class MonthlyFileHandler(FileHandler):
         filename = os.path.join(self.dirname, f"{self.filename_prefix}-{self.current_period}.log")
         super().__init__(filename, mode=mode, encoding=encoding)
     def _update_file_if_needed(self):
-        period = datetime.now().strftime("%Y-%m-")
+        period = datetime.now().strftime("%Y-%m")
         if period != self.current_period:
             try:
                 self.current_period = period
@@ -23,9 +23,13 @@ class MonthlyFileHandler(FileHandler):
                 self.stream = self._open()
             except Exception:
                 pass
+
     def emit(self, record):
         try:
             self._update_file_if_needed()
+            if self.stream is None:
+                os.makedirs(self.dirname, exist_ok=True)
+                self.stream = self._open()
         except Exception:
             pass
         super().emit(record)

@@ -1,4 +1,3 @@
-
 {% load static %}
 <!DOCTYPE html>
 <html lang="de">
@@ -216,6 +215,8 @@
     const listEl = document.getElementById(fieldId + "List");
     if (!input || !listEl) return;
 
+
+
     // close other lists
     hideEditableLists(listEl);
 
@@ -336,7 +337,7 @@
     combined = (combined || "").toLowerCase();
 
     const activePatterns = [
-      /\bactive\b/, /\baktiv\b/, /\bonline\b/, /\benabled\b/, /\baktiviert\b/, /\btrue\b/, /\b1\b/
+      /\bactive\b/, /\baktiv\b/
     ];
     const isActive = activePatterns.some(rx => rx.test(combined));
 
@@ -453,14 +454,22 @@
   // -------------------------
   // Autocomplete init helper (keeps your existing behavior)
   // -------------------------
-  function setupAutocomplete(inputId, resultsId) {
+function setupAutocomplete(inputId, resultsId) {
     const input = document.getElementById(inputId);
     const ul = document.getElementById(resultsId);
     if (!input || !ul) return;
 
+    let debounceTimer = null;
+
     input.addEventListener("input", function () {
       const value = this.value.trim();
-      if (value.length >= 1) {
+      clearTimeout(debounceTimer);
+      if (value.length < 1) {
+        ul.innerHTML = "";
+        ul.style.display = "none";
+        return;
+      }
+      debounceTimer = setTimeout(() => {
         fetch(`/autocomplete_user?term=${encodeURIComponent(value)}`)
           .then(r => r.json())
           .then(data => {
@@ -490,13 +499,8 @@
           .catch(err => {
             console.error("Autocomplete fetch:", err);
           });
-      } else {
-        ul.innerHTML = "";
-        ul.style.display = "none";
-      }
+      }, 300);
     });
-
-    // close list on outside click handled globally
   }
 
   // -------------------------

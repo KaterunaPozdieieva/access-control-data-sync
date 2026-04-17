@@ -1,5 +1,5 @@
 import time
-import datetim
+import datetime
 import importlib
 import logging
 from django.shortcuts import render
@@ -307,14 +307,7 @@ def parse_table_request_params(request):
 
 # +
 def fetch_benutzer_liste(benutzertyp, page, per_page, sort_by, order, filters, sort_mode=None):
-    """
-    Robust wrapper:
-    - delegiert an get_benutzer_liste (wenn möglich),
-    - falls nötig: lädt bis MAX_FETCH_ALL Datensätze und wendet presence/benutzertyp-Filer
-      lokal an VOR der createtime-Sortierung,
-    - wenn sort_by == 'createtime' werden nur Benutzer mit createtime angezeigt (wie gewünscht).
-    Rückgabe: (page_slice, total)
-    """
+
     # 1) delegiere zuerst an utils (DB-side, schnell)
     try:
         try:
@@ -536,54 +529,8 @@ def algemeineTabelle(request):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-knopf = [{'title': "Paxton", 'url_name': 'formular'}]
-menu = [{'title': "Paxton - Berechtigungsname ändern", 'url_name': 'Neue_Berechtigungsname'}]
+# knopf = [{'title': "Paxton", 'url_name': 'formular'}]
+# menu = [{'title': "Paxton - Berechtigungsname ändern", 'url_name': 'Neue_Berechtigungsname'}]
 abbrechen = [{'title': "Abbrechen und zurück", 'url_name': 'algemeineTabelle'}]
 
 def Neue_Berechtigungsname(request):
